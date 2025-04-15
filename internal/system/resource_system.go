@@ -8,25 +8,38 @@ import (
 	"github.com/foxboron/terraform-provider-openwrt/internal/types"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 )
 
 // ProjectModel resource data model that matches the schema.
 type SystemModel struct {
-	Name            types.StringValue `tfsdk:"name" json:".name,omitempty"`
-	Anonymous       types.BoolValue   `tfsdk:"anonymous" json:".anonymous,omitzero,omitempty"`
-	Type            types.StringValue `tfsdk:"type" json:".type,omitzero,omitempty"`
-	ZoneName        types.StringValue `tfsdk:"zonename" json:"zonename,omitzero"`
-	Timezone        types.StringValue `tfsdk:"timezone" json:"timezone,omitzero"`
-	LogSize         types.StringValue `tfsdk:"log_size" json:"log_size,omitzero"`
+	Name      types.StringValue `tfsdk:"name" json:".name,omitempty"`
+	Anonymous types.BoolValue   `tfsdk:"anonymous" json:".anonymous,omitzero,omitempty"`
+	Type      types.StringValue `tfsdk:"type" json:".type,omitzero,omitempty"`
+
 	Hostname        types.StringValue `tfsdk:"hostname" json:"hostname,omitzero"`
-	TTYLogin        types.StringValue `tfsdk:"ttylogin" json:"ttylogin,omitzero"`
+	Description     types.StringValue `tfsdk:"description" json:"description,omitzero"`
+	Notes           types.StringValue `tfsdk:"notes" json:"notes,omitzero"`
+	Buffersize      types.StringValue `tfsdk:"buffersize" json:"buffersize,omitzero"`
 	ConLogLevel     types.StringValue `tfsdk:"conloglevel" json:"conloglevel,omitzero"`
 	CronLogLevel    types.StringValue `tfsdk:"cronloglevel" json:"cronloglevel,omitzero"`
 	KlogconLogLevel types.StringValue `tfsdk:"klogconloglevel" json:"klogconloglevel,omitzero"`
+	LogBufferSize   types.StringValue `tfsdk:"log_buffer_size" json:"log_buffer_size,omitzero"`
+	LogFile         types.StringValue `tfsdk:"log_file" json:"log_file,omitzero"`
+	LogHostname     types.StringValue `tfsdk:"log_hostname" json:"log_hostname,omitzero"`
+	LogIP           types.StringValue `tfsdk:"log_ip" json:"log_ip,omitzero"`
+	LogPort         types.StringValue `tfsdk:"log_port" json:"log_port,omitzero"`
+	LogPrefix       types.StringValue `tfsdk:"log_prefix" json:"log_prefix,omitzero"`
+	LogProto        types.StringValue `tfsdk:"log_proto" json:"log_proto,omitzero"`
+	LogRemote       types.StringValue `tfsdk:"log_remote" json:"log_remote,omitzero"`
+	LogSize         types.StringValue `tfsdk:"log_size" json:"log_size,omitzero"`
+	LogTrailerNull  types.StringValue `tfsdk:"log_trailer_null" json:"log_trailer_null,omitzero"`
+	LogType         types.StringValue `tfsdk:"log_type" json:"log_type,omitzero"`
+	TTYLogin        types.StringValue `tfsdk:"ttylogin" json:"ttylogin,omitzero"`
 	UrandomSeed     types.StringValue `tfsdk:"urandom_seed" json:"urandom_seed,omitempty"`
-	Description     types.StringValue `tfsdk:"description" json:"description,omitzero"`
-	Notes           types.StringValue `tfsdk:"notes" json:"notes,omitzero"`
+	Timezone        types.StringValue `tfsdk:"timezone" json:"timezone,omitzero"`
+	ZoneName        types.StringValue `tfsdk:"zonename" json:"zonename,omitzero"`
+	ZramCompAlgo    types.StringValue `tfsdk:"zram_comp_algo" json:"zram_comp_algo,omitzero"`
+	ZramSizeMb      types.StringValue `tfsdk:"zram_size_mb" json:"zram_size_mb,omitzero"`
 }
 
 // ProjectResource represent Incus project resource.
@@ -66,6 +79,26 @@ func (s SystemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Optional:   true,
 			},
 
+			"hostname": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"description": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"notes": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"buffersize": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
 			"conloglevel": schema.StringAttribute{
 				CustomType: types.StringType{},
 				Optional:   true,
@@ -81,6 +114,61 @@ func (s SystemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Optional:   true,
 			},
 
+			"log_buffer_size": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"log_file": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"log_hostname": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"log_ip": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"log_port": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"log_prefix": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"log_proto": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"log_remote": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"log_size": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"log_trailer_null": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"log_type": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
 			"ttylogin": schema.StringAttribute{
 				CustomType: types.StringType{},
 				Optional:   true,
@@ -91,76 +179,26 @@ func (s SystemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Optional:   true,
 			},
 
-			// "log_buffer_size": schema.StringAttribute{
-			// 	CustomType: types.StringType{},
-			// 	Optional:   true,
-			// },
-			//
-			// "log_file": schema.StringAttribute{
-			// 	CustomType: types.StringType{},
-			// 	Optional:   true,
-			// },
-			//
-			// "log_hostname": schema.StringAttribute{
-			// 	CustomType: types.StringType{},
-			// 	Optional:   true,
-			// },
-			//
-			// "log_ip": schema.StringAttribute{
-			// 	CustomType: types.StringType{},
-			// 	Optional:   true,
-			// },
-			//
-			// "log_port": schema.StringAttribute{
-			// 	CustomType: types.StringType{},
-			// 	Optional:   true,
-			// },
-			//
-			// "log_prefix": schema.StringAttribute{
-			// 	CustomType: types.StringType{},
-			// 	Optional:   true,
-			// },
-			//
-			// "log_proto": schema.StringAttribute{
-			// 	CustomType: types.StringType{},
-			// 	Optional:   true,
-			// },
-			//
-			// "log_remote": schema.StringAttribute{
-			// 	CustomType: types.StringType{},
-			// 	Optional:   true,
-			// },
-
-			"log_size": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
-			},
-
 			"timezone": schema.StringAttribute{
 				CustomType: types.StringType{},
 				Optional:   true,
-				Computed:   true,
-				Default:    stringdefault.StaticString("UTC"),
+				// Computed:   true,
+				// Default:    stringdefault.StaticString("UTC"),
 			},
 
 			"zonename": schema.StringAttribute{
 				CustomType: types.StringType{},
 				Optional:   true,
-				Computed:   true,
-				Default:    stringdefault.StaticString("UTC"),
+				// Computed:   true,
+				// Default:    stringdefault.StaticString("UTC"),
 			},
 
-			"hostname": schema.StringAttribute{
+			"zram_comp_algo": schema.StringAttribute{
 				CustomType: types.StringType{},
 				Optional:   true,
 			},
 
-			"description": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
-			},
-
-			"notes": schema.StringAttribute{
+			"zram_size_mb": schema.StringAttribute{
 				CustomType: types.StringType{},
 				Optional:   true,
 			},
@@ -175,7 +213,7 @@ func (s *SystemResource) Configure(_ context.Context, req resource.ConfigureRequ
 	}
 	provider, ok := data.(*api.Client)
 	if !ok {
-		fmt.Println("failed getting api client")
+		resp.Diagnostics.AddError("Failed to get api client", "")
 		return
 	}
 	s.provider = provider
@@ -286,7 +324,6 @@ func (s SystemResource) Update(ctx context.Context, req resource.UpdateRequest, 
 }
 
 func (s SystemResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	fmt.Println("calling delete")
 	var state SystemModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -308,11 +345,13 @@ func (s SystemResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 func (s *SystemResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	raw, err := s.provider.UCIGetSystem()
 	if err != nil {
-		panic(err)
+		resp.Diagnostics.AddError("Failed to import state", err.Error())
+		return
 	}
 	sm, err := api.Unmarshal[*SystemModel](raw)
 	if err != nil {
-		panic(err)
+		resp.Diagnostics.AddError("Failed to import state", err.Error())
+		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, sm)...)
 }
