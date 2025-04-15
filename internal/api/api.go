@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -65,12 +66,13 @@ func Merge[T any](a, b any) (T, error) {
 	// Merge values from a into b
 	// We could implement more logic here for special fields
 	for k, v := range ma {
-		switch k {
-		case ".name", ".anonymous", ".type":
-			continue
-		default:
-			mb[k] = v
-		}
+		mb[k] = v
+		// switch k {
+		// case ".name", ".anonymous", ".type":
+		// 	continue
+		// default:
+		// 	mb[k] = v
+		// }
 	}
 
 	// Marshal `mb` into T
@@ -205,6 +207,27 @@ func (c *Client) UCITSet(data any, section ...any) (*json.RawMessage, error) {
 	return c.uciCall("tset", section)
 }
 
+func (c *Client) UCISection(data any, section ...any) (*json.RawMessage, error) {
+	data, err := PurgeFields(&data)
+	if err != nil {
+		return nil, err
+	}
+	section = append(section, data)
+	return c.uciCall("section", section)
+}
+
+func (c *Client) UCIAdd(section ...any) (string, error) {
+	raw, err := c.uciCall("add", section)
+	if err != nil {
+		return "", err
+	}
+	var s string
+	if err := json.Unmarshal(*raw, &s); err != nil {
+		return "", err
+	}
+	return s, nil
+}
+
 func (c *Client) UCICommit(section ...any) (*json.RawMessage, error) {
 	return c.uciCall("commit", section)
 }
@@ -215,10 +238,10 @@ func (c *Client) UCIRevert(section ...any) (*json.RawMessage, error) {
 
 func (c *Client) UCICommitAndRevert(section ...any) (*json.RawMessage, diag.Diagnostics) {
 	var diag diag.Diagnostics
-	r, err := c.UCICommit(section)
+	r, err := c.UCICommit(section...)
 	if err != nil {
 		diag.AddError(fmt.Sprintf("Failed to update configu %q", section), err.Error())
-		_, err = c.UCIRevert(section)
+		_, err = c.UCIRevert(section...)
 		if err != nil {
 			diag.AddError(fmt.Sprintf("Failed to revert configu %q", section), err.Error())
 			return nil, diag

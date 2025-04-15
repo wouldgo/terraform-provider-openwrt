@@ -17,6 +17,12 @@ type StringValue struct {
 
 var _ basetypes.StringValuable = StringValue{}
 
+func NewStringValue(s string) StringValue {
+	return StringValue{
+		StringValue: basetypes.NewStringValue(s),
+	}
+}
+
 func (t *StringValue) UnmarshalJSON(data []byte) error {
 	var v *string
 	if err := json.Unmarshal(data, &v); err != nil {
@@ -136,6 +142,12 @@ func (t StringType) ValueType(ctx context.Context) attr.Value {
 
 type BoolValue struct {
 	basetypes.BoolValue
+}
+
+func NewBoolValue(b bool) BoolValue {
+	return BoolValue{
+		BoolValue: basetypes.NewBoolValue(b),
+	}
 }
 
 var _ basetypes.BoolValuable = BoolValue{}

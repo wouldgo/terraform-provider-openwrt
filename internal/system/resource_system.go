@@ -13,19 +13,20 @@ import (
 
 // ProjectModel resource data model that matches the schema.
 type SystemModel struct {
-	Name          types.StringValue `tfsdk:"name" json:".name,omitempty"`
-	Anonymous     types.BoolValue   `tfsdk:"anonymous" json:".anonymous,omitempty"`
-	Type          types.StringValue `tfsdk:"type" json:".type,omitempty"`
-	ZoneName      types.StringValue `tfsdk:"zonename" json:"zonename,omitempty"`
-	CompatVersion types.StringValue `tfsdk:"compat_version" json:"compat_version,omitempty"`
-	Timezone      types.StringValue `tfsdk:"timezone" json:"timezone,omitempty"`
-	LogSize       types.StringValue `tfsdk:"log_size" json:"log_size,omitempty"`
-	Hostname      types.StringValue `tfsdk:"hostname" json:"hostname,omitempty"`
-	TTYLogin      types.StringValue `tfsdk:"ttylogin" json:"ttylogin,omitempty"`
-	CronLogLevel  types.StringValue `tfsdk:"cronloglevel" json:"cronloglevel,omitempty"`
-	UrandomSeed   types.StringValue `tfsdk:"urandom_seed" json:"urandom_seed,omitempty"`
-	Description   types.StringValue `tfsdk:"description" json:"description,omitzero"`
-	Notes         types.StringValue `tfsdk:"notes" json:"notes,omitzero"`
+	Name            types.StringValue `tfsdk:"name" json:".name,omitempty"`
+	Anonymous       types.BoolValue   `tfsdk:"anonymous" json:".anonymous,omitzero,omitempty"`
+	Type            types.StringValue `tfsdk:"type" json:".type,omitzero,omitempty"`
+	ZoneName        types.StringValue `tfsdk:"zonename" json:"zonename,omitzero"`
+	Timezone        types.StringValue `tfsdk:"timezone" json:"timezone,omitzero"`
+	LogSize         types.StringValue `tfsdk:"log_size" json:"log_size,omitzero"`
+	Hostname        types.StringValue `tfsdk:"hostname" json:"hostname,omitzero"`
+	TTYLogin        types.StringValue `tfsdk:"ttylogin" json:"ttylogin,omitzero"`
+	ConLogLevel     types.StringValue `tfsdk:"conloglevel" json:"conloglevel,omitzero"`
+	CronLogLevel    types.StringValue `tfsdk:"cronloglevel" json:"cronloglevel,omitzero"`
+	KlogconLogLevel types.StringValue `tfsdk:"klogconloglevel" json:"klogconloglevel,omitzero"`
+	UrandomSeed     types.StringValue `tfsdk:"urandom_seed" json:"urandom_seed,omitempty"`
+	Description     types.StringValue `tfsdk:"description" json:"description,omitzero"`
+	Notes           types.StringValue `tfsdk:"notes" json:"notes,omitzero"`
 }
 
 // ProjectResource represent Incus project resource.
@@ -65,13 +66,17 @@ func (s SystemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Optional:   true,
 			},
 
-			"compat_version": schema.StringAttribute{
+			"conloglevel": schema.StringAttribute{
 				CustomType: types.StringType{},
-				Computed:   true,
 				Optional:   true,
 			},
 
 			"cronloglevel": schema.StringAttribute{
+				CustomType: types.StringType{},
+				Optional:   true,
+			},
+
+			"klogconloglevel": schema.StringAttribute{
 				CustomType: types.StringType{},
 				Optional:   true,
 			},
@@ -85,6 +90,46 @@ func (s SystemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				CustomType: types.StringType{},
 				Optional:   true,
 			},
+
+			// "log_buffer_size": schema.StringAttribute{
+			// 	CustomType: types.StringType{},
+			// 	Optional:   true,
+			// },
+			//
+			// "log_file": schema.StringAttribute{
+			// 	CustomType: types.StringType{},
+			// 	Optional:   true,
+			// },
+			//
+			// "log_hostname": schema.StringAttribute{
+			// 	CustomType: types.StringType{},
+			// 	Optional:   true,
+			// },
+			//
+			// "log_ip": schema.StringAttribute{
+			// 	CustomType: types.StringType{},
+			// 	Optional:   true,
+			// },
+			//
+			// "log_port": schema.StringAttribute{
+			// 	CustomType: types.StringType{},
+			// 	Optional:   true,
+			// },
+			//
+			// "log_prefix": schema.StringAttribute{
+			// 	CustomType: types.StringType{},
+			// 	Optional:   true,
+			// },
+			//
+			// "log_proto": schema.StringAttribute{
+			// 	CustomType: types.StringType{},
+			// 	Optional:   true,
+			// },
+			//
+			// "log_remote": schema.StringAttribute{
+			// 	CustomType: types.StringType{},
+			// 	Optional:   true,
+			// },
 
 			"log_size": schema.StringAttribute{
 				CustomType: types.StringType{},
@@ -137,17 +182,35 @@ func (s *SystemResource) Configure(_ context.Context, req resource.ConfigureRequ
 }
 
 func (s SystemResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	fmt.Println("CALLED CREATE")
-	raw, err := s.provider.UCIGetSystem()
-	if err != nil {
-		panic(err)
+	var plan SystemModel
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-	sm, err := api.Unmarshal[*SystemModel](raw)
+
+	name, err := s.provider.UCIAdd("system", "system")
 	if err != nil {
-		panic(err)
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to create config %q", plan.Name.ValueString()), err.Error())
+		return
 	}
-	fmt.Println(sm.Hostname.ValueString())
-	// TODO: How to handle creation of system?
+
+	plan.Name = types.NewStringValue(name)
+	plan.Anonymous = types.NewBoolValue(true)
+	plan.Type = types.NewStringValue("system")
+
+	_, err = s.provider.UCITSet(plan, "system", plan.Name.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", plan.Name.ValueString()), err.Error())
+		return
+	}
+
+	if _, d := s.provider.UCICommitAndRevert("system", plan.Name.ValueString()); d != nil {
+		resp.Diagnostics.Append(d...)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
 func (s SystemResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -160,11 +223,13 @@ func (s SystemResource) Read(ctx context.Context, req resource.ReadRequest, resp
 
 	raw, err := s.provider.UCIGetAll("system", state.Name.ValueString())
 	if err != nil {
-		panic(err)
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Name.ValueString()), err.Error())
+		return
 	}
 	sm, err := api.Unmarshal[SystemModel](*raw)
 	if err != nil {
-		panic(err)
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Name.ValueString()), err.Error())
+		return
 	}
 
 	merged, err := api.Merge[*SystemModel](&sm, &state)
@@ -191,21 +256,19 @@ func (s SystemResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	sm, err := api.UCIGetAllT[SystemModel](s.provider, "system", state.Name.ValueString())
 	if err != nil {
-		panic(err)
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Name.ValueString()), err.Error())
+		return
 	}
 
-	merged, err := api.Merge[*SystemModel](&plan, &sm)
+	merged, err := api.Merge[SystemModel](&plan, &sm)
 	if err != nil {
-		panic(err)
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Name.ValueString()), err.Error())
+		return
 	}
-
-	// Unsure what to do with this
-	// This might be specific to the glinet fork
-	merged.CompatVersion = sm.CompatVersion
 
 	_, err = s.provider.UCITSet(merged, "system", state.Name.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", plan.Name.ValueString()), err.Error())
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Name.ValueString()), err.Error())
 		return
 	}
 
@@ -214,10 +277,32 @@ func (s SystemResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
+	// Transfer the hidden fields
+	merged.Anonymous = state.Anonymous
+	merged.Name = state.Name
+	merged.Type = state.Type
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, merged)...)
 }
 
 func (s SystemResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	fmt.Println("calling delete")
+	var state SystemModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	_, err := s.provider.UCIDelete("system", state.Name.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to delete config system config %q", state.Name.ValueString()), err.Error())
+		return
+	}
+
+	if _, d := s.provider.UCICommitAndRevert("system", state.Name.ValueString()); d != nil {
+		resp.Diagnostics.Append(d...)
+		return
+	}
 }
 
 func (s *SystemResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
