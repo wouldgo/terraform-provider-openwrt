@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -134,12 +135,12 @@ type jsonRPCResponseBody struct {
 	Result *json.RawMessage `json:"result"`
 }
 
-func (c *Client) uciCall(method string, params []any) (*json.RawMessage, error) {
+func (c *Client) uciCall(rpc string, method string, params []any) (*json.RawMessage, error) {
 	u, err := url.Parse(c.url)
 	if err != nil {
 		return nil, err
 	}
-	u.Path = "cgi-bin/luci/rpc/uci"
+	u.Path = fmt.Sprintf("cgi-bin/luci/rpc/%s", rpc)
 	q := u.Query()
 	q.Add("auth", c.token)
 	u.RawQuery = q.Encode()
@@ -171,11 +172,11 @@ func (c *Client) uciCall(method string, params []any) (*json.RawMessage, error) 
 }
 
 func (c *Client) UCIGetAll(section ...any) (*json.RawMessage, error) {
-	return c.uciCall("get_all", section)
+	return c.uciCall("uci", "get_all", section)
 }
 
 func UCIGetAllT[T any](c *Client, section ...any) (T, error) {
-	r, err := c.uciCall("get_all", section)
+	r, err := c.uciCall("uci", "get_all", section)
 	if err != nil {
 		return *new(T), err
 	}
@@ -204,7 +205,7 @@ func (c *Client) UCITSet(data any, section ...any) (*json.RawMessage, error) {
 		return nil, err
 	}
 	section = append(section, data)
-	return c.uciCall("tset", section)
+	return c.uciCall("uci", "tset", section)
 }
 
 func (c *Client) UCISection(data any, section ...any) (*json.RawMessage, error) {
@@ -213,11 +214,11 @@ func (c *Client) UCISection(data any, section ...any) (*json.RawMessage, error) 
 		return nil, err
 	}
 	section = append(section, data)
-	return c.uciCall("section", section)
+	return c.uciCall("uci", "section", section)
 }
 
 func (c *Client) UCIAdd(section ...any) (string, error) {
-	raw, err := c.uciCall("add", section)
+	raw, err := c.uciCall("uci", "add", section)
 	if err != nil {
 		return "", err
 	}
@@ -229,11 +230,11 @@ func (c *Client) UCIAdd(section ...any) (string, error) {
 }
 
 func (c *Client) UCICommit(section ...any) (*json.RawMessage, error) {
-	return c.uciCall("commit", section)
+	return c.uciCall("uci", "commit", section)
 }
 
 func (c *Client) UCIRevert(section ...any) (*json.RawMessage, error) {
-	return c.uciCall("revert", section)
+	return c.uciCall("uci", "revert", section)
 }
 
 func (c *Client) UCICommitAndRevert(section ...any) (*json.RawMessage, diag.Diagnostics) {
@@ -251,7 +252,29 @@ func (c *Client) UCICommitAndRevert(section ...any) (*json.RawMessage, diag.Diag
 }
 
 func (c *Client) UCIDelete(section ...any) (*json.RawMessage, error) {
-	return c.uciCall("delete", section)
+	return c.uciCall("uci", "delete", section)
+}
+
+func (c *Client) Writefile(path string, data []byte) (*json.RawMessage, error) {
+	var dst []byte
+	base64.StdEncoding.Encode(dst, data)
+	return c.uciCall("fs", "writefile", []any{path, dst})
+}
+
+func (c *Client) ReadFile(path string) ([]byte, error) {
+	raw, err := c.uciCall("fs", "readfile", []any{path})
+	if err != nil {
+		return nil, err
+	}
+	var s string
+	if err := json.Unmarshal(*raw, &s); err != nil {
+		return nil, err
+	}
+	return base64.StdEncoding.DecodeString(s)
+}
+
+func (c *Client) RemoveFile(path string) (*json.RawMessage, error) {
+	return c.uciCall("fs", "remove", []any{path})
 }
 
 type AnonymousSection struct {
