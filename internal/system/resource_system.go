@@ -12,9 +12,9 @@ import (
 
 // ProjectModel resource data model that matches the schema.
 type SystemModel struct {
-	Name      types.StringValue `tfsdk:"name" json:".name,omitempty"`
-	Anonymous types.BoolValue   `tfsdk:"anonymous" json:".anonymous,omitzero,omitempty"`
+	Id        types.StringValue `tfsdk:"id" json:".name,omitempty"`
 	Type      types.StringValue `tfsdk:"type" json:".type,omitzero,omitempty"`
+	Anonymous types.BoolValue   `tfsdk:"anonymous" json:".anonymous,omitzero,omitempty"`
 
 	Hostname        types.StringValue `tfsdk:"hostname" json:"hostname,omitzero"`
 	Description     types.StringValue `tfsdk:"description" json:"description,omitzero"`
@@ -61,14 +61,14 @@ func (s SystemResource) Metadata(_ context.Context, req resource.MetadataRequest
 func (s SystemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"anonymous": schema.BoolAttribute{
-				CustomType: types.BoolType{},
+			"id": schema.StringAttribute{
+				CustomType: types.StringType{},
 				Computed:   true,
 				Optional:   true,
 			},
 
-			"name": schema.StringAttribute{
-				CustomType: types.StringType{},
+			"anonymous": schema.BoolAttribute{
+				CustomType: types.BoolType{},
 				Computed:   true,
 				Optional:   true,
 			},
@@ -80,8 +80,9 @@ func (s SystemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			},
 
 			"hostname": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				CustomType:  types.StringType{},
+				Optional:    true,
+				Description: "The hostname for this system",
 			},
 
 			"description": schema.StringAttribute{
@@ -229,21 +230,21 @@ func (s SystemResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	name, err := s.provider.UCIAdd("system", "system")
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to create config %q", plan.Name.ValueString()), err.Error())
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to create config %q", plan.Id.ValueString()), err.Error())
 		return
 	}
 
-	plan.Name = types.NewStringValue(name)
+	plan.Id = types.NewStringValue(name)
 	plan.Anonymous = types.NewBoolValue(true)
 	plan.Type = types.NewStringValue("system")
 
-	_, err = s.provider.UCITSet(plan, "system", plan.Name.ValueString())
+	_, err = s.provider.UCITSet(plan, "system", plan.Id.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", plan.Name.ValueString()), err.Error())
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", plan.Id.ValueString()), err.Error())
 		return
 	}
 
-	if _, d := s.provider.UCICommitAndRevert("system", plan.Name.ValueString()); d != nil {
+	if _, d := s.provider.UCICommitAndRevert("system", plan.Id.ValueString()); d != nil {
 		resp.Diagnostics.Append(d...)
 		return
 	}
@@ -259,20 +260,21 @@ func (s SystemResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	raw, err := s.provider.UCIGetAll("system", state.Name.ValueString())
+	raw, err := s.provider.UCIGetAll("system", state.Id.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Name.ValueString()), err.Error())
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Id.ValueString()), err.Error())
 		return
 	}
 	sm, err := api.Unmarshal[SystemModel](*raw)
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Name.ValueString()), err.Error())
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Id.ValueString()), err.Error())
 		return
 	}
 
-	merged, err := api.Merge[*SystemModel](&sm, &state)
+	merged, err := api.Merge[*SystemModel](&state, &sm)
 	if err != nil {
-		panic(err)
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to merge config system %q", state.Id.ValueString()), err.Error())
+		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, *merged)...)
 }
@@ -292,32 +294,32 @@ func (s SystemResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	sm, err := api.UCIGetAllT[SystemModel](s.provider, "system", state.Name.ValueString())
+	sm, err := api.UCIGetAllT[SystemModel](s.provider, "system", state.Id.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Name.ValueString()), err.Error())
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Id.ValueString()), err.Error())
 		return
 	}
 
 	merged, err := api.Merge[SystemModel](&plan, &sm)
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Name.ValueString()), err.Error())
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Id.ValueString()), err.Error())
 		return
 	}
 
-	_, err = s.provider.UCITSet(merged, "system", state.Name.ValueString())
+	_, err = s.provider.UCITSet(merged, "system", state.Id.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Name.ValueString()), err.Error())
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Id.ValueString()), err.Error())
 		return
 	}
 
-	if _, d := s.provider.UCICommitAndRevert("system", state.Name.ValueString()); d != nil {
+	if _, d := s.provider.UCICommitAndRevert("system", state.Id.ValueString()); d != nil {
 		resp.Diagnostics.Append(d...)
 		return
 	}
 
 	// Transfer the hidden fields
 	merged.Anonymous = state.Anonymous
-	merged.Name = state.Name
+	merged.Id = state.Id
 	merged.Type = state.Type
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, merged)...)
@@ -330,13 +332,13 @@ func (s SystemResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	_, err := s.provider.UCIDelete("system", state.Name.ValueString())
+	_, err := s.provider.UCIDelete("system", state.Id.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to delete config system config %q", state.Name.ValueString()), err.Error())
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to delete config system config %q", state.Id.ValueString()), err.Error())
 		return
 	}
 
-	if _, d := s.provider.UCICommitAndRevert("system", state.Name.ValueString()); d != nil {
+	if _, d := s.provider.UCICommitAndRevert("system", state.Id.ValueString()); d != nil {
 		resp.Diagnostics.Append(d...)
 		return
 	}
