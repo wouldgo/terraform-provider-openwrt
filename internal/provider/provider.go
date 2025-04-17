@@ -5,6 +5,7 @@ package provider
 
 import (
 	"context"
+	"os"
 
 	"github.com/foxboron/terraform-provider-openwrt/internal/api"
 	"github.com/foxboron/terraform-provider-openwrt/internal/system"
@@ -62,16 +63,25 @@ func (p *OpenWRTProvider) Schema(ctx context.Context, req provider.SchemaRequest
 
 func (p *OpenWRTProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	var data OpenWRTProviderModel
+	var c *api.Client
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	c := api.NewClient(data.Remote.ValueString())
-	if err := c.Auth(data.User.ValueString(), data.Password.ValueString()); err != nil {
-		panic(err)
+	if os.Getenv("OPENWRT_REMOTE") != "" {
+		c = api.NewClient(os.Getenv("OPENWRT_REMOTE"))
+		if err := c.Auth(os.Getenv("OPENWRT_USER"), os.Getenv("OPENWRT_PASSWORD")); err != nil {
+			resp.Diagnostics.AddError("Failed to auth towards openwrt API", err.Error())
+			return
+		}
+	} else {
+		c = api.NewClient(data.Remote.ValueString())
+		if err := c.Auth(data.User.ValueString(), data.Password.ValueString()); err != nil {
+			resp.Diagnostics.AddError("Failed to auth towards openwrt API", err.Error())
+			return
+		}
 	}
 
 	resp.DataSourceData = c
