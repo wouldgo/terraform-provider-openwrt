@@ -5,7 +5,7 @@ page_title: "openwrt_system"
 
 # openwrt_system (Resource)
 
-Manage the system settings in 
+Manage the system settings in openwrt
 
 ## Example Usage
 
@@ -27,7 +27,7 @@ resource "openwrt_system" "system" {
 
 * `conloglevel` - *Optional* - The maximum log level for kernel messages to be logged to the console. (Default: 7)
 
-* `cronloglevel` - *Optional* - The minimum level for cron messages to be logged to syslog. 0 will print all debug messages, 8 will log command executions, and 9 or higher will only log error messages. (Default: 5
+* `cronloglevel` - *Optional* - The minimum level for cron messages to be logged to syslog. 0 will print all debug messages, 8 will log command executions, and 9 or higher will only log error messages. (Default: 5)
 
 * `description` - *Optional* - A short, single-line description for this system. It should be suitable for human consumption in user interfaces, such as LuCI, selector UIs in remote administration applications, or remote UCI (over ubus RPC).
 
