@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/foxboron/terraform-provider-openwrt/internal/api"
+	"github.com/foxboron/terraform-provider-openwrt/internal/fs"
 	"github.com/foxboron/terraform-provider-openwrt/internal/system"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
@@ -91,6 +92,7 @@ func (p *OpenWRTProvider) Configure(ctx context.Context, req provider.ConfigureR
 func (p *OpenWRTProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		system.NewSystemResource,
+		fs.NewConfigFileResource,
 	}
 }
 
