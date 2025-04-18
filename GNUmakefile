@@ -21,4 +21,7 @@ test:
 testacc:
 	TF_ACC=1 go test -v -cover -timeout 120m ./...
 
-.PHONY: fmt lint test testacc build install generate
+release:
+	GITHUB_TOKEN=$(gh config get oauth_token -h github.com) GPG_FINGERPRINT="9C02FF419FECBE16" goreleaser release --clean
+
+.PHONY: fmt lint test testacc build install generate release
