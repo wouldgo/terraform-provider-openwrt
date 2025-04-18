@@ -253,8 +253,6 @@ func (c *Client) UCIDelete(section ...any) (*json.RawMessage, error) {
 }
 
 func (c *Client) Writefile(path string, data []byte) (*json.RawMessage, error) {
-	dst := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
-	base64.StdEncoding.Encode(dst, data)
 	return c.uciCall("fs", "writefile", []any{path, data})
 }
 
