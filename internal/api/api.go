@@ -39,12 +39,10 @@ func Unmarshal[T any](b json.RawMessage) (T, error) {
 	return v, nil
 }
 
-type obj map[string]json.RawMessage
-
 // Merges a into b
 func Merge[T any](a, b any) (T, error) {
 	var v T
-	var ma, mb obj
+	var ma, mb map[string]json.RawMessage
 
 	// Turn a,b any to bytes
 	ba, err := json.Marshal(a)
