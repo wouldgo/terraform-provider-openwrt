@@ -128,7 +128,10 @@ func (c *Client) Auth(username, password string) error {
 }
 
 type jsonRPCResponseBody struct {
-	Error  *string          `json:"error"`
+	Error *struct {
+		Code    float64 `json:"code"`
+		Message string  `json:"message"`
+	} `json:"error"`
 	Result *json.RawMessage `json:"result"`
 }
 
@@ -163,7 +166,7 @@ func (c *Client) uciCall(rpc string, method string, params []any) (*json.RawMess
 		return nil, err
 	}
 	if responseBody.Error != nil {
-		return nil, fmt.Errorf(*responseBody.Error)
+		return nil, fmt.Errorf((*responseBody.Error).Message)
 	}
 	return responseBody.Result, nil
 }
