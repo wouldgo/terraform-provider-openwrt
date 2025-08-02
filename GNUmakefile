@@ -16,7 +16,13 @@ fmt:
 	gofmt -s -w -e .
 
 test:
-	go test -v -cover -timeout=120s -parallel=10 ./...
+	rm -Rf _out/.coverage;
+ifeq ($(TEST_PACKAGE),)
+	go test -parallel=10 -timeout 120s -cover -coverprofile=_out/.coverage -v ./...;
+else
+	go test -parallel=10 -timeout 120s -cover -coverprofile=_out/.coverage -v ./$(TEST_PACKAGE);
+endif
+	go tool cover -html=_out/.coverage;
 
 testacc:
 	TF_ACC=1 go test -v -cover -timeout 120m ./...
