@@ -19,6 +19,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+var _ provider.Provider = (*OpenWRTProvider)(nil)
+
 // OpenWRTProvider
 type OpenWRTProvider struct {
 	version string
@@ -93,6 +95,7 @@ func (p *OpenWRTProvider) Resources(ctx context.Context) []func() resource.Resou
 	return []func() resource.Resource{
 		system.NewSystemResource,
 		fs.NewConfigFileResource,
+		fs.NewFileResource,
 	}
 }
 
