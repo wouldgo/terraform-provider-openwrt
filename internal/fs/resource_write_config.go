@@ -23,7 +23,7 @@ type ConfigFileModel struct {
 
 // ConfigFileResource represent Incus project resource.
 type ConfigFileResource struct {
-	provider *api.Client
+	provider api.Client
 }
 
 // NewProjectResource return new project resource.
@@ -59,7 +59,7 @@ func (c *ConfigFileResource) Configure(_ context.Context, req resource.Configure
 	if data == nil {
 		return
 	}
-	provider, ok := data.(*api.Client)
+	provider, ok := data.(api.Client)
 	if !ok {
 		resp.Diagnostics.AddError("Failed to get api client", "")
 		return
@@ -77,14 +77,16 @@ func (c ConfigFileResource) Create(ctx context.Context, req resource.CreateReque
 
 	path := path.Join(etcConfig, plan.Name.ValueString())
 
-	if _, err := c.provider.Writefile(path, []byte(plan.Content.ValueString())); err != nil {
+	if err := c.provider.Writefile(ctx, path, []byte(plan.Content.ValueString())); err != nil {
 		resp.Diagnostics.AddError("Failed to write file", err.Error())
 		return
 	}
 
 	if plan.Commit.ValueBool() {
-		if _, d := c.provider.UCICommitAndRevert(plan.Name.ValueString()); d != nil {
-			resp.Diagnostics.Append(d...)
+		if errs := c.provider.CommitOrRevert(ctx, plan.Name.ValueString()); len(errs) > 0 {
+			for _, err := range errs {
+				resp.Diagnostics.AddError("failed to commit or revert", err.Error())
+			}
 			return
 		}
 	}
@@ -101,7 +103,7 @@ func (c ConfigFileResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	path := path.Join(etcConfig, state.Name.ValueString())
-	b, err := c.provider.ReadFile(path)
+	b, err := c.provider.ReadFile(ctx, path)
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Name.ValueString()), err.Error())
 		return
@@ -124,13 +126,15 @@ func (c ConfigFileResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	path := path.Join(etcConfig, plan.Name.ValueString())
-	if _, err := c.provider.Writefile(path, []byte(plan.Content.ValueString())); err != nil {
+	if err := c.provider.Writefile(ctx, path, []byte(plan.Content.ValueString())); err != nil {
 		resp.Diagnostics.AddError("Failed to write file", err.Error())
 	}
 
 	if plan.Commit.ValueBool() {
-		if _, d := c.provider.UCICommitAndRevert(plan.Name.ValueString()); d != nil {
-			resp.Diagnostics.Append(d...)
+		if errs := c.provider.CommitOrRevert(ctx, plan.Name.ValueString()); len(errs) > 0 {
+			for _, err := range errs {
+				resp.Diagnostics.AddError("failed to commit or revert", err.Error())
+			}
 			return
 		}
 	}
@@ -148,16 +152,35 @@ func (c ConfigFileResource) Delete(ctx context.Context, req resource.DeleteReque
 	}
 
 	path := path.Join(etcConfig, state.Name.ValueString())
-	_, err := c.provider.RemoveFile(path)
+	err := c.provider.RemoveFile(ctx, path)
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to delete config file %q", state.Name.ValueString()), err.Error())
 		return
 	}
 
 	if state.Commit.ValueBool() {
-		if _, d := c.provider.UCICommitAndRevert(state.Name.ValueString()); d != nil {
-			resp.Diagnostics.Append(d...)
+		if errs := c.provider.CommitOrRevert(ctx, state.Name.ValueString()); len(errs) > 0 {
+			for _, err := range errs {
+				resp.Diagnostics.AddError("failed to commit or revert", err.Error())
+			}
 			return
 		}
 	}
+}
+
+func (c *ConfigFileResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	var state ConfigFileModel
+
+	path := path.Join("/etc/config", req.ID)
+	b, err := c.provider.ReadFile(ctx, path)
+	if err != nil {
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Name.ValueString()), err.Error())
+		return
+	}
+
+	state.Name = types.StringValue(req.ID)
+	state.Content = types.StringValue(string(b))
+	state.Commit = types.BoolValue(true)
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }

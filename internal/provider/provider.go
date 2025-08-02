@@ -9,6 +9,7 @@ import (
 
 	"github.com/foxboron/terraform-provider-openwrt/internal/api"
 	"github.com/foxboron/terraform-provider-openwrt/internal/fs"
+	"github.com/foxboron/terraform-provider-openwrt/internal/opkg"
 	"github.com/foxboron/terraform-provider-openwrt/internal/system"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
@@ -19,7 +20,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var _ provider.Provider = (*OpenWRTProvider)(nil)
+var (
+	_ provider.Provider = (*OpenWRTProvider)(nil)
+
+	openWRTRemoteEnv,
+	openWRTRemoteEnvSet = os.LookupEnv("OPENWRT_REMOTE")
+
+	openWRTUserEnv,
+	openWRTUserEnvSet = os.LookupEnv("OPENWRT_USER")
+
+	openWRTPasswordEnv,
+	openWRTPasswordEnvSet = os.LookupEnv("OPENWRT_PASSWORD")
+)
 
 // OpenWRTProvider
 type OpenWRTProvider struct {
@@ -65,26 +77,46 @@ func (p *OpenWRTProvider) Schema(ctx context.Context, req provider.SchemaRequest
 }
 
 func (p *OpenWRTProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data OpenWRTProviderModel
-	var c *api.Client
+	var (
+		data OpenWRTProviderModel
+		c    api.Client
+		err  error
+	)
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	if os.Getenv("OPENWRT_REMOTE") != "" {
-		c = api.NewClient(os.Getenv("OPENWRT_REMOTE"))
-		if err := c.Auth(os.Getenv("OPENWRT_USER"), os.Getenv("OPENWRT_PASSWORD")); err != nil {
-			resp.Diagnostics.AddError("Failed to auth towards openwrt API", err.Error())
+	if openWRTRemoteEnvSet {
+		c, err = api.NewClient(openWRTRemoteEnv)
+		if err != nil {
+			resp.Diagnostics.AddError("failed to instantiate remote client from env variable", err.Error())
+		}
+	} else {
+		c, err = api.NewClient(data.Remote.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("failed to instantiate remote client", err.Error())
+		}
+	}
+
+	if openWRTUserEnvSet && openWRTPasswordEnvSet {
+		err = c.Auth(ctx, openWRTUserEnv, openWRTPasswordEnv)
+		if err != nil {
+			resp.Diagnostics.AddError("failed to auth towards openwrt API from env variables", err.Error())
 			return
 		}
 	} else {
-		c = api.NewClient(data.Remote.ValueString())
-		if err := c.Auth(data.User.ValueString(), data.Password.ValueString()); err != nil {
-			resp.Diagnostics.AddError("Failed to auth towards openwrt API", err.Error())
+		err = c.Auth(ctx, data.User.ValueString(), data.Password.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("failed to auth towards openwrt API", err.Error())
 			return
 		}
+	}
+
+	err = c.UpdatePackages(ctx)
+	if err != nil {
+		resp.Diagnostics.AddError("packages update in error", err.Error())
 	}
 
 	resp.DataSourceData = c
@@ -96,6 +128,7 @@ func (p *OpenWRTProvider) Resources(ctx context.Context) []func() resource.Resou
 		system.NewSystemResource,
 		fs.NewConfigFileResource,
 		fs.NewFileResource,
+		opkg.NewOpkgResource,
 	}
 }
 

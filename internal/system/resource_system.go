@@ -4,47 +4,47 @@ import (
 	"context"
 	"fmt"
 
+	"dario.cat/mergo"
 	"github.com/foxboron/terraform-provider-openwrt/internal/api"
 	"github.com/foxboron/terraform-provider-openwrt/internal/types"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
-// ProjectModel resource data model that matches the schema.
 type SystemModel struct {
-	Id        types.StringValue `tfsdk:"id" json:".name,omitempty"`
-	Type      types.StringValue `tfsdk:"type" json:".type,omitzero,omitempty"`
-	Anonymous types.BoolValue   `tfsdk:"anonymous" json:".anonymous,omitzero,omitempty"`
+	Id        types.StringValue `tfsdk:"id"`
+	Type      types.StringValue `tfsdk:"type"`
+	Anonymous types.BoolValue   `tfsdk:"anonymous"`
 
-	Hostname        types.StringValue `tfsdk:"hostname" json:"hostname,omitzero"`
-	Description     types.StringValue `tfsdk:"description" json:"description,omitzero"`
-	Notes           types.StringValue `tfsdk:"notes" json:"notes,omitzero"`
-	Buffersize      types.StringValue `tfsdk:"buffersize" json:"buffersize,omitzero"`
-	ConLogLevel     types.StringValue `tfsdk:"conloglevel" json:"conloglevel,omitzero"`
-	CronLogLevel    types.StringValue `tfsdk:"cronloglevel" json:"cronloglevel,omitzero"`
-	KlogconLogLevel types.StringValue `tfsdk:"klogconloglevel" json:"klogconloglevel,omitzero"`
-	LogBufferSize   types.StringValue `tfsdk:"log_buffer_size" json:"log_buffer_size,omitzero"`
-	LogFile         types.StringValue `tfsdk:"log_file" json:"log_file,omitzero"`
-	LogHostname     types.StringValue `tfsdk:"log_hostname" json:"log_hostname,omitzero"`
-	LogIP           types.StringValue `tfsdk:"log_ip" json:"log_ip,omitzero"`
-	LogPort         types.StringValue `tfsdk:"log_port" json:"log_port,omitzero"`
-	LogPrefix       types.StringValue `tfsdk:"log_prefix" json:"log_prefix,omitzero"`
-	LogProto        types.StringValue `tfsdk:"log_proto" json:"log_proto,omitzero"`
-	LogRemote       types.StringValue `tfsdk:"log_remote" json:"log_remote,omitzero"`
-	LogSize         types.StringValue `tfsdk:"log_size" json:"log_size,omitzero"`
-	LogTrailerNull  types.StringValue `tfsdk:"log_trailer_null" json:"log_trailer_null,omitzero"`
-	LogType         types.StringValue `tfsdk:"log_type" json:"log_type,omitzero"`
-	TTYLogin        types.StringValue `tfsdk:"ttylogin" json:"ttylogin,omitzero"`
-	UrandomSeed     types.StringValue `tfsdk:"urandom_seed" json:"urandom_seed,omitempty"`
-	Timezone        types.StringValue `tfsdk:"timezone" json:"timezone,omitzero"`
-	ZoneName        types.StringValue `tfsdk:"zonename" json:"zonename,omitzero"`
-	ZramCompAlgo    types.StringValue `tfsdk:"zram_comp_algo" json:"zram_comp_algo,omitzero"`
-	ZramSizeMb      types.StringValue `tfsdk:"zram_size_mb" json:"zram_size_mb,omitzero"`
+	Hostname        types.StringValue `tfsdk:"hostname"`
+	Description     types.StringValue `tfsdk:"description"`
+	Notes           types.StringValue `tfsdk:"notes"`
+	Buffersize      types.StringValue `tfsdk:"buffersize"`
+	ConLogLevel     types.StringValue `tfsdk:"conloglevel"`
+	CronLogLevel    types.StringValue `tfsdk:"cronloglevel"`
+	KlogconLogLevel types.StringValue `tfsdk:"klogconloglevel"`
+	LogBufferSize   types.StringValue `tfsdk:"log_buffer_size"`
+	LogFile         types.StringValue `tfsdk:"log_file"`
+	LogHostname     types.StringValue `tfsdk:"log_hostname"`
+	LogIP           types.StringValue `tfsdk:"log_ip"`
+	LogPort         types.StringValue `tfsdk:"log_port"`
+	LogPrefix       types.StringValue `tfsdk:"log_prefix"`
+	LogProto        types.StringValue `tfsdk:"log_proto"`
+	LogRemote       types.StringValue `tfsdk:"log_remote"`
+	LogSize         types.StringValue `tfsdk:"log_size"`
+	LogTrailerNull  types.StringValue `tfsdk:"log_trailer_null"`
+	LogType         types.StringValue `tfsdk:"log_type"`
+	TTYLogin        types.StringValue `tfsdk:"ttylogin"`
+	UrandomSeed     types.StringValue `tfsdk:"urandom_seed"`
+	Timezone        types.StringValue `tfsdk:"timezone"`
+	ZoneName        types.StringValue `tfsdk:"zonename"`
+	ZramCompAlgo    types.StringValue `tfsdk:"zram_comp_algo"`
+	ZramSizeMb      types.StringValue `tfsdk:"zram_size_mb"`
 }
 
 // ProjectResource represent Incus project resource.
 type SystemResource struct {
-	provider *api.Client
+	provider api.Client
 }
 
 // NewProjectResource return new project resource.
@@ -212,7 +212,7 @@ func (s *SystemResource) Configure(_ context.Context, req resource.ConfigureRequ
 	if data == nil {
 		return
 	}
-	provider, ok := data.(*api.Client)
+	provider, ok := data.(api.Client)
 	if !ok {
 		resp.Diagnostics.AddError("Failed to get api client", "")
 		return
@@ -228,7 +228,7 @@ func (s SystemResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	name, err := s.provider.UCIAdd("system", "system")
+	name, err := s.provider.Add(ctx, "system", "system")
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to create config %q", plan.Id.ValueString()), err.Error())
 		return
@@ -238,14 +238,16 @@ func (s SystemResource) Create(ctx context.Context, req resource.CreateRequest, 
 	plan.Anonymous = types.NewBoolValue(true)
 	plan.Type = types.NewStringValue("system")
 
-	_, err = s.provider.UCITSet(plan, "system", plan.Id.ValueString())
+	err = s.provider.TSet(ctx, plan, "system", plan.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", plan.Id.ValueString()), err.Error())
 		return
 	}
 
-	if _, d := s.provider.UCICommitAndRevert("system", plan.Id.ValueString()); d != nil {
-		resp.Diagnostics.Append(d...)
+	if errs := s.provider.CommitOrRevert(ctx, "system", plan.Id.ValueString()); len(errs) > 0 {
+		for _, err := range errs {
+			resp.Diagnostics.AddError("failed to commit or revert the change", err.Error())
+		}
 		return
 	}
 
@@ -260,23 +262,17 @@ func (s SystemResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	raw, err := s.provider.UCIGetAll("system", state.Id.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Id.ValueString()), err.Error())
-		return
-	}
-	sm, err := api.Unmarshal[SystemModel](*raw)
+	sm, err := s.provider.GetAll(ctx, "system", state.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Id.ValueString()), err.Error())
 		return
 	}
 
-	merged, err := api.Merge[*SystemModel](&state, &sm)
-	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to merge config system %q", state.Id.ValueString()), err.Error())
+	if err := mergo.Merge(&state, sm, mergo.WithOverride, mergo.WithoutDereference); err != nil {
+		resp.Diagnostics.AddError(fmt.Sprintf("failed to merge config system %q", state.Id.ValueString()), err.Error())
 		return
 	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, *merged)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
 func (s SystemResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -294,35 +290,31 @@ func (s SystemResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	sm, err := api.UCIGetAllT[SystemModel](s.provider, "system", state.Id.ValueString())
+	sm, err := s.provider.GetAll(ctx, s.provider, "system", state.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Id.ValueString()), err.Error())
 		return
 	}
 
-	merged, err := api.Merge[SystemModel](&plan, &sm)
+	if err := mergo.Merge(&state, sm, mergo.WithOverride, mergo.WithoutDereference); err != nil {
+		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Id.ValueString()), err.Error())
+		return
+	}
+
+	err = s.provider.TSet(ctx, state, "system", state.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Id.ValueString()), err.Error())
 		return
 	}
 
-	_, err = s.provider.UCITSet(merged, "system", state.Id.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError(fmt.Sprintf("Failed to update config %q", state.Id.ValueString()), err.Error())
+	if errs := s.provider.CommitOrRevert(ctx, "system", state.Id.ValueString()); len(errs) > 0 {
+		for _, err := range errs {
+			resp.Diagnostics.AddError("failed to commit or revert the change", err.Error())
+		}
 		return
 	}
 
-	if _, d := s.provider.UCICommitAndRevert("system", state.Id.ValueString()); d != nil {
-		resp.Diagnostics.Append(d...)
-		return
-	}
-
-	// Transfer the hidden fields
-	merged.Anonymous = state.Anonymous
-	merged.Id = state.Id
-	merged.Type = state.Type
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, merged)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
 func (s SystemResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -332,28 +324,26 @@ func (s SystemResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	_, err := s.provider.UCIDelete("system", state.Id.ValueString())
+	err := s.provider.Delete(ctx, "system", state.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to delete config system config %q", state.Id.ValueString()), err.Error())
 		return
 	}
 
-	if _, d := s.provider.UCICommitAndRevert("system", state.Id.ValueString()); d != nil {
-		resp.Diagnostics.Append(d...)
+	if errs := s.provider.CommitOrRevert(ctx, "system", state.Id.ValueString()); len(errs) > 0 {
+		for _, err := range errs {
+			resp.Diagnostics.AddError("failed to commit or revert the change", err.Error())
+		}
 		return
 	}
 }
 
 func (s *SystemResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	raw, err := s.provider.UCIGetSystem()
+	sm, err := s.provider.GetSystem(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to import state", err.Error())
 		return
 	}
-	sm, err := api.Unmarshal[*SystemModel](raw)
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to import state", err.Error())
-		return
-	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, sm)...)
 }

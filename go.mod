@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	dario.cat/mergo v1.0.2 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
