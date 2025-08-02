@@ -1,6 +1,6 @@
 ---
 page_title: "openwrt_configfile"
-  
+
 ---
 
 # openwrt_configfile (Resource)
@@ -44,14 +44,3 @@ resource "openwrt_configfile" "system" {
 ## Attribute Reference
 
 No attributes are exported.
-
-## Importing
-
-Importing resouces can be done by pointing at the resource, and use the name of
-the configuration you want to import. In the case of the system configuration
-you would use `system`, for wireless you would use `wireless`, and so on.
-
-```shell
-terraform import openwrt_configfile.configfile <name of configfile>
-```
-
