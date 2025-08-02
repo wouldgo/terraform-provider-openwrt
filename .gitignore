@@ -1,1 +1,3 @@
+_out/
+!_out/.keep
 terraform-provider-openwrt
