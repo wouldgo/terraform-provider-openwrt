@@ -19,7 +19,7 @@ type FileModel struct {
 }
 
 type FileResource struct {
-	provider *api.Client
+	provider api.Client
 }
 
 func NewFileResource() resource.Resource {
@@ -51,7 +51,7 @@ func (c *FileResource) Configure(_ context.Context, req resource.ConfigureReques
 	if data == nil {
 		return
 	}
-	provider, ok := data.(*api.Client)
+	provider, ok := data.(api.Client)
 	if !ok {
 		resp.Diagnostics.AddError("Failed to get api client", "")
 		return
@@ -69,7 +69,7 @@ func (c FileResource) Create(ctx context.Context, req resource.CreateRequest, re
 
 	path := path.Join(plan.Path.ValueString(), plan.Name.ValueString())
 
-	if _, err := c.provider.Writefile(path, []byte(plan.Content.ValueString())); err != nil {
+	if err := c.provider.Writefile(ctx, path, []byte(plan.Content.ValueString())); err != nil {
 		resp.Diagnostics.AddError("Failed to write file", err.Error())
 		return
 	}
@@ -85,7 +85,7 @@ func (c FileResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		return
 	}
 	path := path.Join(state.Path.ValueString(), state.Name.ValueString())
-	b, err := c.provider.ReadFile(path)
+	b, err := c.provider.ReadFile(ctx, path)
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Name.ValueString()), err.Error())
 		return
@@ -108,7 +108,7 @@ func (c FileResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 
 	path := path.Join(plan.Path.ValueString(), plan.Name.ValueString())
-	if _, err := c.provider.Writefile(path, []byte(plan.Content.ValueString())); err != nil {
+	if err := c.provider.Writefile(ctx, path, []byte(plan.Content.ValueString())); err != nil {
 		resp.Diagnostics.AddError("Failed to write file", err.Error())
 	}
 
@@ -124,7 +124,7 @@ func (c FileResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 	}
 
 	path := path.Join(state.Path.ValueString(), state.Name.ValueString())
-	_, err := c.provider.RemoveFile(path)
+	err := c.provider.RemoveFile(ctx, path)
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to delete config file %q", state.Name.ValueString()), err.Error())
 		return
