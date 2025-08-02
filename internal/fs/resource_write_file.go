@@ -9,52 +9,44 @@ import (
 	"github.com/foxboron/terraform-provider-openwrt/internal/api"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var etcConfig = "/etc/config"
-
-type ConfigFileModel struct {
+type FileModel struct {
+	Path    types.String `tfsdk:"path"`
 	Name    types.String `tfsdk:"name"`
 	Content types.String `tfsdk:"content"`
-	Commit  types.Bool   `tfsdk:"commit"`
 }
 
-// ConfigFileResource represent Incus project resource.
-type ConfigFileResource struct {
+type FileResource struct {
 	provider *api.Client
 }
 
-// NewProjectResource return new project resource.
-func NewConfigFileResource() resource.Resource {
-	return &ConfigFileResource{}
+func NewFileResource() resource.Resource {
+	return &FileResource{}
 }
 
-// Metadata for project resource.
-func (c ConfigFileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = fmt.Sprintf("%s_configfile", req.ProviderTypeName)
+func (c FileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = fmt.Sprintf("%s_file", req.ProviderTypeName)
 }
 
-func (c ConfigFileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (c FileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"path": schema.StringAttribute{
+				Required: true,
+			},
 			"name": schema.StringAttribute{
 				Required: true,
 			},
 			"content": schema.StringAttribute{
 				Required: true,
 			},
-			"commit": schema.BoolAttribute{
-				Optional: true,
-				Default:  booldefault.StaticBool(true),
-				Computed: true,
-			},
 		},
 	}
 }
 
-func (c *ConfigFileResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (c *FileResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	data := req.ProviderData
 	if data == nil {
 		return
@@ -67,40 +59,32 @@ func (c *ConfigFileResource) Configure(_ context.Context, req resource.Configure
 	c.provider = provider
 }
 
-func (c ConfigFileResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan ConfigFileModel
+func (c FileResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan FileModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	path := path.Join(etcConfig, plan.Name.ValueString())
+	path := path.Join(plan.Path.ValueString(), plan.Name.ValueString())
 
 	if _, err := c.provider.Writefile(path, []byte(plan.Content.ValueString())); err != nil {
 		resp.Diagnostics.AddError("Failed to write file", err.Error())
 		return
 	}
 
-	if plan.Commit.ValueBool() {
-		if _, d := c.provider.UCICommitAndRevert(plan.Name.ValueString()); d != nil {
-			resp.Diagnostics.Append(d...)
-			return
-		}
-	}
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func (c ConfigFileResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state ConfigFileModel
+func (c FileResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state FileModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	path := path.Join(etcConfig, state.Name.ValueString())
+	path := path.Join(state.Path.ValueString(), state.Name.ValueString())
 	b, err := c.provider.ReadFile(path)
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Name.ValueString()), err.Error())
@@ -115,49 +99,34 @@ func (c ConfigFileResource) Read(ctx context.Context, req resource.ReadRequest, 
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
-func (c ConfigFileResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan ConfigFileModel
+func (c FileResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan FileModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	path := path.Join(etcConfig, plan.Name.ValueString())
+	path := path.Join(plan.Path.ValueString(), plan.Name.ValueString())
 	if _, err := c.provider.Writefile(path, []byte(plan.Content.ValueString())); err != nil {
 		resp.Diagnostics.AddError("Failed to write file", err.Error())
 	}
 
-	if plan.Commit.ValueBool() {
-		if _, d := c.provider.UCICommitAndRevert(plan.Name.ValueString()); d != nil {
-			resp.Diagnostics.Append(d...)
-			return
-		}
-	}
-
-	plan.Commit = types.BoolValue(true)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func (c ConfigFileResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state ConfigFileModel
+func (c FileResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state FileModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	path := path.Join(etcConfig, state.Name.ValueString())
+	path := path.Join(state.Path.ValueString(), state.Name.ValueString())
 	_, err := c.provider.RemoveFile(path)
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to delete config file %q", state.Name.ValueString()), err.Error())
 		return
-	}
-
-	if state.Commit.ValueBool() {
-		if _, d := c.provider.UCICommitAndRevert(state.Name.ValueString()); d != nil {
-			resp.Diagnostics.Append(d...)
-			return
-		}
 	}
 }
