@@ -16,7 +16,7 @@ var (
 	openWRTPasswordEnvSet = os.LookupEnv("OPENWRT_PASSWORD")
 )
 
-func TestTestLuciApis(t *testing.T) {
+func TestLuciApis(t *testing.T) {
 	if !openWRTRemoteEnvSet ||
 		!openWRTUserEnvSet ||
 		!openWRTPasswordEnvSet {
@@ -154,6 +154,18 @@ func TestTestLuciApis(t *testing.T) {
 		// 	},
 		// },
 	}
+
+	t.Run("passing empty string as openwrt remote", func(t *testing.T) {
+		c, err := NewClient("")
+		if err == nil {
+			t.Error("error must be present")
+		}
+
+		if c != nil {
+			t.Error("client must be nil")
+		}
+	})
+
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			c, err := NewClient(openWRTRemoteEnv)
