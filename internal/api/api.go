@@ -1,3 +1,6 @@
+//go:generate mockgen -destination=../../mocks/api.go -package=mocks -source=api.go -typed=true
+
+// -build_constraint test
 package api
 
 import (
@@ -9,6 +12,10 @@ import (
 	"net/url"
 	"time"
 )
+
+type ClientFactory interface {
+	Get(url string) (Client, error)
+}
 
 type Client interface {
 	Auth(ctx context.Context, username, password string) error
@@ -33,7 +40,21 @@ type Client interface {
 	RemovePackages(ctx context.Context, packages ...string) error
 }
 
-var _ Client = (*client)(nil)
+var (
+	_ ClientFactory = (*clientFactory)(nil)
+	_ Client        = (*client)(nil)
+)
+
+type clientFactory struct {
+}
+
+func NewClientFactory() (ClientFactory, error) {
+	return &clientFactory{}, nil
+}
+
+func (cf *clientFactory) Get(url string) (Client, error) {
+	return newClient(url)
+}
 
 type client struct {
 	*uci
@@ -43,7 +64,7 @@ type client struct {
 	client *http.Client
 }
 
-func NewClient(url string) (Client, error) {
+func newClient(url string) (Client, error) {
 	if url == "" {
 		return nil, fmt.Errorf("missing mandatory parameter url")
 	}

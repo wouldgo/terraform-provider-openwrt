@@ -204,7 +204,7 @@ func (c OpkgResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 
 		err = c.provider.RemovePackages(ctx, valueStr)
 		if err != nil {
-			resp.Diagnostics.AddError("checking package went in error", fmt.Sprintf("%s: %v", valueStr, err))
+			resp.Diagnostics.AddError("removing package went in error", fmt.Sprintf("%s: %v", valueStr, err))
 			return
 		}
 	}

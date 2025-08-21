@@ -25,7 +25,7 @@ endif
 	go tool cover -html=_out/.coverage;
 
 testacc:
-	TF_ACC=1 go test -v -cover -timeout 120m ./...
+	TF_ACC=1 go test -timeout 10s -cover -coverprofile=_out/.coverage -v ./...
 
 release:
 	export GITHUB_TOKEN=$(shell gh config get oauth_token -h github.com) && \

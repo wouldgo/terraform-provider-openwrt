@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package provider
 
 import (
@@ -8,9 +5,9 @@ import (
 	"os"
 
 	"github.com/foxboron/terraform-provider-openwrt/internal/api"
-	"github.com/foxboron/terraform-provider-openwrt/internal/fs"
-	"github.com/foxboron/terraform-provider-openwrt/internal/opkg"
-	"github.com/foxboron/terraform-provider-openwrt/internal/system"
+	"github.com/foxboron/terraform-provider-openwrt/internal/resources/fs"
+	"github.com/foxboron/terraform-provider-openwrt/internal/resources/opkg"
+	"github.com/foxboron/terraform-provider-openwrt/internal/resources/system"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/function"
@@ -35,13 +32,15 @@ var (
 
 // OpenWRTProvider
 type OpenWRTProvider struct {
-	version string
+	version       string
+	clientFactory api.ClientFactory
 }
 
-func New(version string) func() provider.Provider {
+func New(version string, clientFactory api.ClientFactory) func() provider.Provider {
 	return func() provider.Provider {
 		return &OpenWRTProvider{
-			version: version,
+			version:       version,
+			clientFactory: clientFactory,
 		}
 	}
 }
@@ -89,12 +88,12 @@ func (p *OpenWRTProvider) Configure(ctx context.Context, req provider.ConfigureR
 	}
 
 	if openWRTRemoteEnvSet {
-		c, err = api.NewClient(openWRTRemoteEnv)
+		c, err = p.clientFactory.Get(openWRTRemoteEnv)
 		if err != nil {
 			resp.Diagnostics.AddError("failed to instantiate remote client from env variable", err.Error())
 		}
 	} else {
-		c, err = api.NewClient(data.Remote.ValueString())
+		c, err = p.clientFactory.Get(data.Remote.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError("failed to instantiate remote client", err.Error())
 		}
