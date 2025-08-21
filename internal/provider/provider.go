@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package provider
 
 import (
@@ -8,9 +5,9 @@ import (
 	"os"
 
 	"github.com/foxboron/terraform-provider-openwrt/internal/api"
-	"github.com/foxboron/terraform-provider-openwrt/internal/fs"
-	"github.com/foxboron/terraform-provider-openwrt/internal/opkg"
-	"github.com/foxboron/terraform-provider-openwrt/internal/system"
+	"github.com/foxboron/terraform-provider-openwrt/internal/resources/fs"
+	"github.com/foxboron/terraform-provider-openwrt/internal/resources/opkg"
+	"github.com/foxboron/terraform-provider-openwrt/internal/resources/system"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/function"
@@ -35,13 +32,15 @@ var (
 
 // OpenWRTProvider
 type OpenWRTProvider struct {
-	version string
+	version       string
+	clientFactory api.ClientFactory
 }
 
-func New(version string) func() provider.Provider {
+func New(version string, clientFactory api.ClientFactory) func() provider.Provider {
 	return func() provider.Provider {
 		return &OpenWRTProvider{
-			version: version,
+			version:       version,
+			clientFactory: clientFactory,
 		}
 	}
 }
@@ -88,35 +87,32 @@ func (p *OpenWRTProvider) Configure(ctx context.Context, req provider.ConfigureR
 		return
 	}
 
+	remoteUrl := data.Remote.ValueString()
 	if openWRTRemoteEnvSet {
-		c, err = api.NewClient(openWRTRemoteEnv)
-		if err != nil {
-			resp.Diagnostics.AddError("failed to instantiate remote client from env variable", err.Error())
-		}
-	} else {
-		c, err = api.NewClient(data.Remote.ValueString())
-		if err != nil {
-			resp.Diagnostics.AddError("failed to instantiate remote client", err.Error())
-		}
+		remoteUrl = openWRTRemoteEnv
 	}
 
+	c, err = p.clientFactory.Get(remoteUrl)
+	if err != nil {
+		resp.Diagnostics.AddError("failed to instantiate remote client from env variable", err.Error())
+		return
+	}
+
+	username, password := data.User.ValueString(), data.Password.ValueString()
 	if openWRTUserEnvSet && openWRTPasswordEnvSet {
-		err = c.Auth(ctx, openWRTUserEnv, openWRTPasswordEnv)
-		if err != nil {
-			resp.Diagnostics.AddError("failed to auth towards openwrt API from env variables", err.Error())
-			return
-		}
-	} else {
-		err = c.Auth(ctx, data.User.ValueString(), data.Password.ValueString())
-		if err != nil {
-			resp.Diagnostics.AddError("failed to auth towards openwrt API", err.Error())
-			return
-		}
+		username = openWRTUserEnv
+		password = openWRTPasswordEnv
+	}
+	err = c.Auth(ctx, username, password)
+	if err != nil {
+		resp.Diagnostics.AddError("failed to auth towards openwrt API", err.Error())
+		return
 	}
 
 	err = c.UpdatePackages(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("packages update in error", err.Error())
+		return
 	}
 
 	resp.DataSourceData = c

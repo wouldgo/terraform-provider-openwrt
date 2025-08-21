@@ -244,10 +244,8 @@ func (s SystemResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	if errs := s.provider.CommitOrRevert(ctx, "system", plan.Id.ValueString()); len(errs) > 0 {
-		for _, err := range errs {
-			resp.Diagnostics.AddError("failed to commit or revert the change", err.Error())
-		}
+	if err := s.provider.CommitOrRevert(ctx, "system", plan.Id.ValueString()); err != nil {
+		resp.Diagnostics.AddError("failed to commit or revert", err.Error())
 		return
 	}
 
@@ -307,10 +305,8 @@ func (s SystemResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	if errs := s.provider.CommitOrRevert(ctx, "system", state.Id.ValueString()); len(errs) > 0 {
-		for _, err := range errs {
-			resp.Diagnostics.AddError("failed to commit or revert the change", err.Error())
-		}
+	if err := s.provider.CommitOrRevert(ctx, "system", state.Id.ValueString()); err != nil {
+		resp.Diagnostics.AddError("failed to commit or revert", err.Error())
 		return
 	}
 
@@ -330,10 +326,8 @@ func (s SystemResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		return
 	}
 
-	if errs := s.provider.CommitOrRevert(ctx, "system", state.Id.ValueString()); len(errs) > 0 {
-		for _, err := range errs {
-			resp.Diagnostics.AddError("failed to commit or revert the change", err.Error())
-		}
+	if err := s.provider.CommitOrRevert(ctx, "system", state.Id.ValueString()); err != nil {
+		resp.Diagnostics.AddError("failed to commit or revert", err.Error())
 		return
 	}
 }
