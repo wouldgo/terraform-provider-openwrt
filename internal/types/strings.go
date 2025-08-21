@@ -42,7 +42,7 @@ func (t StringValue) MarshalJSON() ([]byte, error) {
 	if t.IsNull() || t.IsUnknown() {
 		return []byte("null"), nil
 	}
-	return json.Marshal(t.StringValue.ValueString())
+	return json.Marshal(t.ValueString())
 }
 
 func (v StringValue) Equal(o attr.Value) bool {

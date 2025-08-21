@@ -83,10 +83,8 @@ func (c ConfigFileResource) Create(ctx context.Context, req resource.CreateReque
 	}
 
 	if plan.Commit.ValueBool() {
-		if errs := c.provider.CommitOrRevert(ctx, plan.Name.ValueString()); len(errs) > 0 {
-			for _, err := range errs {
-				resp.Diagnostics.AddError("failed to commit or revert", err.Error())
-			}
+		if err := c.provider.CommitOrRevert(ctx, plan.Name.ValueString()); err != nil {
+			resp.Diagnostics.AddError("failed to commit or revert", err.Error())
 			return
 		}
 	}
@@ -131,10 +129,8 @@ func (c ConfigFileResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	if plan.Commit.ValueBool() {
-		if errs := c.provider.CommitOrRevert(ctx, plan.Name.ValueString()); len(errs) > 0 {
-			for _, err := range errs {
-				resp.Diagnostics.AddError("failed to commit or revert", err.Error())
-			}
+		if err := c.provider.CommitOrRevert(ctx, plan.Name.ValueString()); err != nil {
+			resp.Diagnostics.AddError("failed to commit or revert", err.Error())
 			return
 		}
 	}
@@ -159,10 +155,8 @@ func (c ConfigFileResource) Delete(ctx context.Context, req resource.DeleteReque
 	}
 
 	if state.Commit.ValueBool() {
-		if errs := c.provider.CommitOrRevert(ctx, state.Name.ValueString()); len(errs) > 0 {
-			for _, err := range errs {
-				resp.Diagnostics.AddError("failed to commit or revert", err.Error())
-			}
+		if err := c.provider.CommitOrRevert(ctx, state.Name.ValueString()); err != nil {
+			resp.Diagnostics.AddError("failed to commit or revert", err.Error())
 			return
 		}
 	}

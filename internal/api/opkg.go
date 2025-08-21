@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -25,30 +26,34 @@ type Status struct {
 }
 
 func (c *opkg) UpdatePackages(ctx context.Context) error {
-	result, err := call(ctx, c.client, *c.url, *c.token, "ipkg", "update", []any{})
+	result, err := call(
+		ctx, c.client, *c.url, *c.token,
+		"ipkg", "update", []any{})
 	if err != nil {
 		return err
 	}
 
 	var data []any
 	if err = json.Unmarshal(result, &data); err != nil {
-		return err
+		return errors.Join(ErrUnMarshal, err)
 	}
 
 	ret := data[0]
 	retCasted, ok := ret.(float64)
 	if !ok {
-		return fmt.Errorf("update return value not a float64 value")
+		return ErrFloatExpected
 	}
 
 	if retCasted != 0 {
-		return fmt.Errorf("update packages returns %.0f", retCasted)
+		return errors.Join(ErrNonZeroRet, fmt.Errorf("update packages returns %.0f", retCasted))
 	}
 	return nil
 }
 
 func (c *opkg) CheckPackage(ctx context.Context, pack string) (*PackageInfo, error) {
-	result, err := call(ctx, c.client, *c.url, *c.token, "ipkg", "status", []any{pack})
+	result, err := call(
+		ctx, c.client, *c.url, *c.token,
+		"ipkg", "status", []any{pack})
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +62,7 @@ func (c *opkg) CheckPackage(ctx context.Context, pack string) (*PackageInfo, err
 	if err = json.Unmarshal(result, &data); err != nil {
 		if err = json.Unmarshal(result, &[]bool{}); err != nil {
 
-			return nil, err
+			return nil, errors.Join(ErrUnMarshal, err)
 		}
 
 		return &PackageInfo{
@@ -69,7 +74,7 @@ func (c *opkg) CheckPackage(ctx context.Context, pack string) (*PackageInfo, err
 	}
 	ret, ok := data[pack]
 	if !ok {
-		return nil, fmt.Errorf("package not found")
+		return nil, ErrPackageNotFound
 	}
 	return &ret, nil
 }
@@ -77,7 +82,7 @@ func (c *opkg) CheckPackage(ctx context.Context, pack string) (*PackageInfo, err
 func (c *opkg) InstallPackages(ctx context.Context, packages ...string) error {
 	packagesLen := len(packages)
 	if packagesLen == 0 {
-		return fmt.Errorf("no packages specified")
+		return ErrPackagesNotSpecified
 	}
 
 	toApi := make([]any, 0, packagesLen)
@@ -91,17 +96,17 @@ func (c *opkg) InstallPackages(ctx context.Context, packages ...string) error {
 
 	var data []any
 	if err = json.Unmarshal(result, &data); err != nil {
-		return err
+		return errors.Join(ErrUnMarshal, err)
 	}
 
 	ret := data[0]
 	retCasted, ok := ret.(float64)
 	if !ok {
-		return fmt.Errorf("install return value not a float64 value")
+		return ErrFloatExpected
 	}
 
 	if retCasted != 0 {
-		return fmt.Errorf("install packages returns %.0f", retCasted)
+		return errors.Join(ErrNonZeroRet, fmt.Errorf("install packages returns %.0f", retCasted))
 	}
 	return nil
 }
@@ -109,7 +114,7 @@ func (c *opkg) InstallPackages(ctx context.Context, packages ...string) error {
 func (c *opkg) RemovePackages(ctx context.Context, packages ...string) error {
 	packagesLen := len(packages)
 	if packagesLen == 0 {
-		return fmt.Errorf("no packages specified")
+		return ErrPackageNotFound
 	}
 
 	toApi := make([]any, 0, packagesLen)
@@ -123,17 +128,17 @@ func (c *opkg) RemovePackages(ctx context.Context, packages ...string) error {
 
 	var data []any
 	if err = json.Unmarshal(result, &data); err != nil {
-		return err
+		return errors.Join(ErrUnMarshal, err)
 	}
 
 	ret := data[0]
 	retCasted, ok := ret.(float64)
 	if !ok {
-		return fmt.Errorf("remove return value not a float64 value")
+		return ErrFloatExpected
 	}
 
 	if retCasted != 0 {
-		return fmt.Errorf("remove packages returns %.0f", retCasted)
+		return errors.Join(ErrNonZeroRet, fmt.Errorf("remove packages returns %.0f", retCasted))
 	}
 	return nil
 }

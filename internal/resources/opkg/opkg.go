@@ -67,7 +67,11 @@ func (c OpkgResource) Create(ctx context.Context, req resource.CreateRequest, re
 			return
 		}
 		var valueStr string
-		value.As(&valueStr)
+		err = value.As(&valueStr)
+		if err != nil {
+			resp.Diagnostics.AddError("value cannot be read", fmt.Sprintf("value %s not readable as string: %v", value, err))
+			return
+		}
 
 		re, err := c.provider.CheckPackage(ctx, valueStr)
 		if err != nil {
@@ -101,7 +105,11 @@ func (c OpkgResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 			return
 		}
 		var packageValueStr string
-		packageValue.As(&packageValueStr)
+		err = packageValue.As(&packageValueStr)
+		if err != nil {
+			resp.Diagnostics.AddError("value cannot be read", fmt.Sprintf("package value %s not readable as string: %v", packageValue, err))
+			return
+		}
 
 		re, err := c.provider.CheckPackage(ctx, packageValueStr)
 		if err != nil {
@@ -142,7 +150,11 @@ func (c OpkgResource) Update(ctx context.Context, req resource.UpdateRequest, re
 			return
 		}
 		var valueStr string
-		value.As(&valueStr)
+		err = value.As(&valueStr)
+		if err != nil {
+			resp.Diagnostics.AddError("value cannot be read", fmt.Sprintf("package value %s not readable as string: %v", value, err))
+			return
+		}
 
 		planSet[valueStr] = struct{}{}
 	}
@@ -155,7 +167,11 @@ func (c OpkgResource) Update(ctx context.Context, req resource.UpdateRequest, re
 			return
 		}
 		var valueStr string
-		value.As(&valueStr)
+		err = value.As(&valueStr)
+		if err != nil {
+			resp.Diagnostics.AddError("value cannot be read", fmt.Sprintf("package value %s not readable as string: %v", value, err))
+			return
+		}
 
 		stateSet[valueStr] = struct{}{}
 	}
@@ -200,11 +216,15 @@ func (c OpkgResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 			return
 		}
 		var valueStr string
-		value.As(&valueStr)
+		err = value.As(&valueStr)
+		if err != nil {
+			resp.Diagnostics.AddError("value cannot be read", fmt.Sprintf("package value %s not readable as string: %v", value, err))
+			return
+		}
 
 		err = c.provider.RemovePackages(ctx, valueStr)
 		if err != nil {
-			resp.Diagnostics.AddError("checking package went in error", fmt.Sprintf("%s: %v", valueStr, err))
+			resp.Diagnostics.AddError("removing package went in error", fmt.Sprintf("%s: %v", valueStr, err))
 			return
 		}
 	}

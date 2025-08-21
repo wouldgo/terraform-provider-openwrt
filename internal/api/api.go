@@ -1,14 +1,22 @@
+//go:generate mockgen -destination=../../mocks/api.go -package=mocks -source=api.go -typed=true
+
+// -build_constraint test
 package api
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"time"
 )
+
+type ClientFactory interface {
+	Get(url string) (Client, error)
+}
 
 type Client interface {
 	Auth(ctx context.Context, username, password string) error
@@ -19,7 +27,7 @@ type Client interface {
 	TSet(ctx context.Context, data any, section ...any) error
 	Add(ctx context.Context, section ...any) (string, error)
 	Delete(ctx context.Context, section ...any) error
-	CommitOrRevert(ctx context.Context, section ...any) []error
+	CommitOrRevert(ctx context.Context, section ...any) error
 
 	//FS
 	Writefile(ctx context.Context, path string, data []byte) error
@@ -33,7 +41,39 @@ type Client interface {
 	RemovePackages(ctx context.Context, packages ...string) error
 }
 
-var _ Client = (*client)(nil)
+var (
+	_ ClientFactory = (*clientFactory)(nil)
+	_ Client        = (*client)(nil)
+
+	ErrMissingUrl           = fmt.Errorf("missing remote url")
+	ErrParsing              = fmt.Errorf("parsing error")
+	ErrMarshal              = fmt.Errorf("json marshal in error")
+	ErrHttpRequestCreation  = fmt.Errorf("http request creation in error")
+	ErrHttpRequestExecution = fmt.Errorf("http request execution in error")
+	ErrUnMarshal            = fmt.Errorf("json unmarshal in error")
+	ErrAuth                 = fmt.Errorf("authencation in error")
+	ErrEmptyResult          = fmt.Errorf("empty reply as result")
+	ErrRpcCommand           = fmt.Errorf("missing rpc command")
+	ErrRpcMethod            = fmt.Errorf("missing rpc method")
+	ErrRpcExecution         = fmt.Errorf("rpc exection error")
+
+	ErrFloatExpected   = fmt.Errorf("value not a float64 type")
+	ErrNonZeroRet      = fmt.Errorf("execution returned value different than zero")
+	ErrPackageNotFound = fmt.Errorf("package not found")
+
+	ErrPackagesNotSpecified = fmt.Errorf("no packages specified")
+)
+
+type clientFactory struct {
+}
+
+func NewClientFactory() (ClientFactory, error) {
+	return &clientFactory{}, nil
+}
+
+func (cf *clientFactory) Get(url string) (Client, error) {
+	return newClient(url)
+}
 
 type client struct {
 	*uci
@@ -43,9 +83,9 @@ type client struct {
 	client *http.Client
 }
 
-func NewClient(url string) (Client, error) {
+func newClient(url string) (Client, error) {
 	if url == "" {
-		return nil, fmt.Errorf("missing mandatory parameter url")
+		return nil, ErrMissingUrl
 	}
 
 	client := &client{
@@ -69,21 +109,21 @@ func (c *client) Auth(ctx context.Context, username, password string) error {
 		Params: []string{username, password},
 	})
 	if err != nil {
-		return err
+		return errors.Join(ErrMarshal, err)
 	}
 	u, err := url.JoinPath(c.url, "cgi-bin/luci/rpc/auth")
 	if err != nil {
-		return err
+		return errors.Join(ErrParsing, err)
 	}
 
 	req, err := http.NewRequestWithContext(innerCtx, http.MethodPost, u, bytes.NewBuffer(b))
 	if err != nil {
-		return err
+		return errors.Join(ErrHttpRequestCreation, err)
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return err
+		return errors.Join(ErrHttpRequestExecution, err)
 	}
 
 	var data struct {
@@ -91,15 +131,15 @@ func (c *client) Auth(ctx context.Context, username, password string) error {
 		Error  string `json:"error"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return fmt.Errorf("failed to read authentication response body: %w", err)
+		return errors.Join(ErrUnMarshal, fmt.Errorf("failed to read authentication response body: %w", err))
 	}
 
 	if data.Error != "" {
-		return fmt.Errorf("authentication error: %s", data.Error)
+		return errors.Join(ErrAuth, fmt.Errorf("authentication error: %s", data.Error))
 	}
 
 	if data.Result == "" {
-		return fmt.Errorf("empty reply as result")
+		return ErrEmptyResult
 	}
 
 	c.uci = &uci{
@@ -142,24 +182,27 @@ type jsonRPCResponseBody struct {
 	Result *json.RawMessage      `json:"result"`
 }
 
-func call(ctx context.Context, client *http.Client, remoteUrl, token, rpc, method string, params []any) (json.RawMessage, error) {
+func call(
+	ctx context.Context, client *http.Client,
+	remoteUrl, token, rpc, method string, params []any,
+) (json.RawMessage, error) {
 	innerCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	if remoteUrl == "" {
-		return nil, fmt.Errorf("missing remote url")
+		return nil, ErrMissingUrl
 	}
 	if token == "" {
-		return nil, fmt.Errorf("no auth is performed against %s", remoteUrl)
+		return nil, errors.Join(ErrAuth, fmt.Errorf("no auth is performed against %s", remoteUrl))
 	}
 	if rpc == "" {
-		return nil, fmt.Errorf("missing rpc command to %s", remoteUrl)
+		return nil, ErrRpcCommand
 	}
 	if method == "" {
-		return nil, fmt.Errorf("missing rpc command method: %s", rpc)
+		return nil, ErrRpcMethod
 	}
 	u, err := url.Parse(remoteUrl)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrParsing, err)
 	}
 	u.Path = fmt.Sprintf("cgi-bin/luci/rpc/%s", rpc)
 	q := u.Query()
@@ -171,30 +214,30 @@ func call(ctx context.Context, client *http.Client, remoteUrl, token, rpc, metho
 		Params: params,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrMarshal, err)
 	}
 	req, err := http.NewRequestWithContext(innerCtx, http.MethodPost, u.String(), bytes.NewBuffer(b))
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrHttpRequestCreation, err)
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	fmt.Printf("%s - %s: %s", req.Method, req.URL, string(b))
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrHttpRequestExecution, err)
 	}
 	var responseBody jsonRPCResponseBody
 	decoder := json.NewDecoder(resp.Body)
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 	if err = decoder.Decode(&responseBody); err != nil {
-		return nil, err
+		return nil, errors.Join(ErrUnMarshal, err)
 	}
 	if responseBody.Error != nil {
-		return nil, responseBody.Error
+		return nil, errors.Join(ErrRpcExecution, responseBody.Error)
 	}
 
 	if responseBody.Result == nil {
-		return nil, fmt.Errorf("result is absent")
+		return nil, ErrEmptyResult
 	}
 
 	return *responseBody.Result, nil

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -143,7 +144,7 @@ func (c *uci) uciRevert(ctx context.Context, section ...any) error {
 	return err
 }
 
-func (c *uci) CommitOrRevert(ctx context.Context, section ...any) []error {
+func (c *uci) CommitOrRevert(ctx context.Context, section ...any) error {
 	toReturn := make([]error, 0, 2)
 	err := c.uciCommit(ctx, section...)
 	if err != nil {
@@ -155,7 +156,7 @@ func (c *uci) CommitOrRevert(ctx context.Context, section ...any) []error {
 	}
 
 	if len(toReturn) > 0 {
-		return toReturn
+		return errors.Join(toReturn...)
 	}
 	return nil
 }
