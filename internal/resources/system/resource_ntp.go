@@ -1,3 +1,6 @@
+// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// SPDX-License-Identifier: MPL-2.0
+
 package system
 
 import "github.com/foxboron/terraform-provider-openwrt/internal/types"

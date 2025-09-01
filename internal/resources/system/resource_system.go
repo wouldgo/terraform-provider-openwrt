@@ -1,3 +1,6 @@
+// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// SPDX-License-Identifier: MPL-2.0
+
 package system
 
 import (
@@ -60,19 +63,19 @@ func (s SystemResource) Metadata(_ context.Context, req resource.MetadataRequest
 // Schema for system resource.
 func (s SystemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "Manage the system settings in openwrt",
+		Description:         "Manage the system settings in openwrt",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				CustomType: types.StringType{},
 				Computed:   true,
 				Optional:   true,
 			},
-
 			"anonymous": schema.BoolAttribute{
 				CustomType: types.BoolType{},
 				Computed:   true,
 				Optional:   true,
 			},
-
 			"type": schema.StringAttribute{
 				CustomType: types.StringType{},
 				Computed:   true,
@@ -80,128 +83,152 @@ func (s SystemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			},
 
 			"hostname": schema.StringAttribute{
-				CustomType:  types.StringType{},
-				Optional:    true,
-				Description: "The hostname for this system",
+				MarkdownDescription: "The hostname for this system (Default: \"OpenWrt\")",
+				Description:         "The hostname for this system (Default: \"OpenWrt\")",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"description": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "A short, single-line description for this system. It should be suitable for human consumption in user interfaces, such as LuCI, selector UIs in remote administration applications, or remote UCI (over ubus RPC).",
+				Description:         "A short, single-line description for this system. It should be suitable for human consumption in user interfaces, such as LuCI, selector UIs in remote administration applications, or remote UCI (over ubus RPC).",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"notes": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "A multi-line, free-form text field about this system that can be used in any way the user wishes, e.g. to hold installation notes, or unit serial number and inventory number, location, etc.",
+				Description:         "A multi-line, free-form text field about this system that can be used in any way the user wishes, e.g. to hold installation notes, or unit serial number and inventory number, location, etc.",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"buffersize": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Size of the kernel message buffer.",
+				Description:         "Size of the kernel message buffer.",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"conloglevel": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "The maximum log level for kernel messages to be logged to the console. (Default: 7)",
+				Description:         "The maximum log level for kernel messages to be logged to the console. (Default: 7)",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"cronloglevel": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "The minimum level for cron messages to be logged to syslog. 0 will print all debug messages, 8 will log command executions, and 9 or higher will only log error messages. (Default: 5)",
+				Description:         "The minimum level for cron messages to be logged to syslog. 0 will print all debug messages, 8 will log command executions, and 9 or higher will only log error messages. (Default: 5)",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"klogconloglevel": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "The maximum log level for kernel messages to be logged to the console. Only messages with a level lower than this will be printed to the console. Identical to conloglevel and will override it. (Default: 7)",
+				Description:         "The maximum log level for kernel messages to be logged to the console. Only messages with a level lower than this will be printed to the console. Identical to conloglevel and will override it. (Default: 7)",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"log_buffer_size": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Size of the log buffer of the procd based system log, that is accessible via the logread command. Defaults to the value of log_size if unset.",
+				Description:         "Size of the log buffer of the procd based system log, that is accessible via the logread command. Defaults to the value of log_size if unset.",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"log_file": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "File to write log messages to (type file). The default is to not write a log in a file. The most often used location for a system log file is `/var/log/messages`.",
+				Description:         "File to write log messages to (type file). The default is to not write a log in a file. The most often used location for a system log file is /var/log/messages.",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"log_hostname": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Hostname to send to remote syslog. If none is provided, the actual hostname is send. This feature is only present in 17.xx and later versions",
+				Description:         "Hostname to send to remote syslog. If none is provided, the actual hostname is send. This feature is only present in 17.xx and later versions",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"log_ip": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "IP address of a syslog server to which the log messages should be sent in addition to the local destination.",
+				Description:         "IP address of a syslog server to which the log messages should be sent in addition to the local destination.",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"log_port": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Port number of the remote syslog server specified with log_ip. (Default: 514)",
+				Description:         "Port number of the remote syslog server specified with log_ip. (Default: 514)",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"log_prefix": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Adds a prefix to all log messages send over network.",
+				Description:         "Adds a prefix to all log messages send over network.",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"log_proto": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Sets the protocol to use for the connection, either tcp or udp. (Default: \"udp\")",
+				Description:         "Sets the protocol to use for the connection, either tcp or udp. (Default: \"udp\")",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"log_remote": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Enables remote logging. (Default: 1)",
+				Description:         "Enables remote logging. (Default: 1)",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"log_size": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Size of the file based log buffer in KiB (see log_file). This value is used as the fallback value for log_buffer_size if the latter is not specified. (Default: 64)",
+				Description:         "Size of the file based log buffer in KiB (see log_file). This value is used as the fallback value for log_buffer_size if the latter is not specified. (Default: 64)",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"log_trailer_null": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Use \\0 instead of \\n as trailer when using TCP. (Default: 0)",
+				Description:         "Use \\0 instead of \\n as trailer when using TCP. (Default: 0)",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"log_type": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Either circular or file. The circular option is a fixed size queue in memory, while the file is a dynamically sized file, that can be in memory, or written to disk. Note: If log_type is set to file, then at some point when the log fills, the device may encounter an out-of-space condition. This is especially an issue for devices with limited onboard storage: in memory, or on flash. (Default: \"circular\")",
+				Description:         "Either circular or file. The circular option is a fixed size queue in memory, while the file is a dynamically sized file, that can be in memory, or written to disk. Note: If log_type is set to file, then at some point when the log fills, the device may encounter an out-of-space condition. This is especially an issue for devices with limited onboard storage: in memory, or on flash. (Default: \"circular\")",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"ttylogin": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Require authentication for local users to log in the system. Disabled by default. It applies to the access methods listed in /etc/inittab, such as keyboard and serial. (Default: 0)",
+				Description:         "Require authentication for local users to log in the system. Disabled by default. It applies to the access methods listed in /etc/inittab, such as keyboard and serial. (Default: 0)",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"urandom_seed": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Path of the seed. Enables saving a new seed on each boot. (Default: 0)",
+				Description:         "Path of the seed. Enables saving a new seed on each boot. (Default: 0)",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"timezone": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "POSIX.1 time zone string corresponding to the time zone in which date and time should be displayed by default. See [timezone database](https://github.com/openwrt/luci/blob/master/modules/luci-lua-runtime/luasrc/sys/zoneinfo/tzdata.lua) for a mapping between IANA/Olson and POSIX.1 formats. (For London this corresponds to GMT0BST,M3.5.0/1,M10.5.0) (Default: \"UTC\")",
+				Description:         "POSIX.1 time zone string corresponding to the time zone in which date and time should be displayed by default. See [timezone database](https://github.com/openwrt/luci/blob/master/modules/luci-lua-runtime/luasrc/sys/zoneinfo/tzdata.lua) for a mapping between IANA/Olson and POSIX.1 formats. (For London this corresponds to GMT0BST,M3.5.0/1,M10.5.0) (Default: \"UTC\")",
+				CustomType:          types.StringType{},
+				Optional:            true,
 				// Computed:   true,
 				// Default:    stringdefault.StaticString("UTC"),
 			},
-
 			"zonename": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "IANA/Olson time zone string. If zoneinfo-* packages are present, possible values can be found by running find /usr/share/zoneinfo. See [timezone database](https://github.com/openwrt/luci/blob/master/modules/luci-lua-runtime/luasrc/sys/zoneinfo/tzdata.lua) for a mapping between IANA/Olson and POSIX.1 formats. (For London this corresponds to Europe/London) (Default: UTC)",
+				Description:         "IANA/Olson time zone string. If zoneinfo-* packages are present, possible values can be found by running find /usr/share/zoneinfo. See [timezone database](https://github.com/openwrt/luci/blob/master/modules/luci-lua-runtime/luasrc/sys/zoneinfo/tzdata.lua) for a mapping between IANA/Olson and POSIX.1 formats. (For London this corresponds to Europe/London) (Default: UTC)",
+				CustomType:          types.StringType{},
+				Optional:            true,
 				// Computed:   true,
 				// Default:    stringdefault.StaticString("UTC"),
 			},
-
 			"zram_comp_algo": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Compression algorithm to use for ZRAM, can be one of lzo, lzo-rle, lz4, zstd. (Default: \"lzo\")",
+				Description:         "Compression algorithm to use for ZRAM, can be one of lzo, lzo-rle, lz4, zstd. (Default: \"lzo\")",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
-
 			"zram_size_mb": schema.StringAttribute{
-				CustomType: types.StringType{},
-				Optional:   true,
+				MarkdownDescription: "Size of ZRAM in MB. (Default: ramsize in Kb divided by 2048)",
+				Description:         "Size of ZRAM in MB. (Default: ramsize in Kb divided by 2048)",
+				CustomType:          types.StringType{},
+				Optional:            true,
 			},
 		},
 	}

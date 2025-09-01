@@ -1,4 +1,5 @@
 SHELL := /bin/bash
+OUT := $(shell pwd)/_out
 
 EXCLUDED_PACKAGES := \
 	github.com/foxboron/terraform-provider-openwrt \
@@ -8,43 +9,39 @@ EXCLUDED_PACKAGES := \
 
 PACKAGES := $(shell go list ./... | grep -Fvx -f <(printf '%s\n' $(EXCLUDED_PACKAGES)))
 
-default: fmt lint install generate
-
-build:
-	go build -v ./...
-
-install: build
-	go install -v ./...
-
-lint:
-	golangci-lint run
-
-generate:
-	cd tools; go generate ./...
-
-fmt:
-	gofmt -s -w -e .
+.PHONY: bin-deps clean fmt lint install generate build test snapshot release
+default: clean fmt lint install generate
 
 bin-deps:
 	go install go.uber.org/mock/mockgen@latest
 
+clean: bin-deps
+	rm -Rfv $(OUT) dist
+	mkdir -p $(OUT)
+
+fmt:
+	gofmt -s -w -e .
+
+lint:
+	golangci-lint run
+
+install:
+	go mod download
+
+generate:
+	go generate -v ./...; cd tools; go generate -v ./...
+
+build:
+	go build -v
+
 test:
-ifeq ($(TEST_PACKAGE),)
-	go test -parallel=10 -timeout 120s -cover -coverprofile=_out/.coverage -v ./...;
-else
-	go test -parallel=10 -timeout 120s -cover -coverprofile=_out/.coverage -v ./$(TEST_PACKAGE);
-endif
-	go tool cover -html=_out/.coverage;
-
-testacc:
-	TF_ACC=1 go test -timeout 20s -cover -coverprofile=_out/.coverage -v $(PACKAGES)
-
-coveragefile:
+	go test -parallel=10 -timeout 120s -cover -coverprofile=_out/.coverage -v $(PACKAGES);
 	go tool cover -html=_out/.coverage -o=./_out/coverage.html
+
+snapshot:
+	goreleaser build --clean --snapshot
 
 release:
 	export GITHUB_TOKEN=$(shell gh config get oauth_token -h github.com) && \
 	export GPG_FINGERPRINT="9C02FF419FECBE16" && \
 	goreleaser release --clean
-
-.PHONY: bin-deps fmt lint test testacc build install generate release

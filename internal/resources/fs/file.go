@@ -1,3 +1,6 @@
+// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// SPDX-License-Identifier: MPL-2.0
+
 package fs
 
 import (
@@ -32,15 +35,23 @@ func (c FileResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 
 func (c FileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "Write configuration files to an arbitray path on the OpenWRT router.",
+		Description:         "Write configuration files to an arbitray path on the OpenWRT router.",
 		Attributes: map[string]schema.Attribute{
 			"path": schema.StringAttribute{
-				Required: true,
+				MarkdownDescription: "Path where file has to be.",
+				Description:         "Path where file has to be.",
+				Required:            true,
 			},
 			"name": schema.StringAttribute{
-				Required: true,
+				MarkdownDescription: "Name of the file.",
+				Description:         "Name of the file.",
+				Required:            true,
 			},
 			"content": schema.StringAttribute{
-				Required: true,
+				MarkdownDescription: "The content of the file.",
+				Description:         "The content of the file.",
+				Required:            true,
 			},
 		},
 	}
