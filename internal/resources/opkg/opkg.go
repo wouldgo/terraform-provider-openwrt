@@ -1,3 +1,6 @@
+// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// SPDX-License-Identifier: MPL-2.0
+
 package opkg
 
 import (
@@ -30,10 +33,14 @@ func (c OpkgResource) Metadata(_ context.Context, req resource.MetadataRequest, 
 
 func (c OpkgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "Install packages on the router",
+		Description:         "Install packages on the router",
 		Attributes: map[string]schema.Attribute{
 			"packages": schema.ListAttribute{
-				ElementType: types.StringType,
-				Required:    true,
+				MarkdownDescription: "The list of packages to install via opkg package manager",
+				Description:         "The list of packages to install via opkg package manager",
+				ElementType:         types.StringType,
+				Required:            true,
 			},
 		},
 	}

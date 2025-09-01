@@ -1,3 +1,6 @@
+// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// SPDX-License-Identifier: MPL-2.0
+
 package main
 
 import (
@@ -21,7 +24,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.opentofu.org/foxboron/openwrt",
+		Address: "registry.terraform.io/foxboron/openwrt",
 		Debug:   debug,
 	}
 

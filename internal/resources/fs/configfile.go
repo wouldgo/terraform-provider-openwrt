@@ -1,3 +1,6 @@
+// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// SPDX-License-Identifier: MPL-2.0
+
 package fs
 
 import (
@@ -38,17 +41,25 @@ func (c ConfigFileResource) Metadata(_ context.Context, req resource.MetadataReq
 
 func (c ConfigFileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "Write configuration files to `/etc/config` on the OpenWRT router.",
+		Description:         "Write configuration files to /etc/config on the OpenWRT router.",
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
-				Required: true,
+				MarkdownDescription: "Name of the configuration file.",
+				Description:         "Name of the configuration file.",
+				Required:            true,
 			},
 			"content": schema.StringAttribute{
-				Required: true,
+				MarkdownDescription: "The content of the configuration file.",
+				Description:         "The content of the configuration file.",
+				Required:            true,
 			},
 			"commit": schema.BoolAttribute{
-				Optional: true,
-				Default:  booldefault.StaticBool(true),
-				Computed: true,
+				MarkdownDescription: "If we should tell `uci` to run `commit` on the configuration file. (Default: true)",
+				Description:         "If we should tell uci to run commit on the configuration file. (Default: true)",
+				Optional:            true,
+				Default:             booldefault.StaticBool(true),
+				Computed:            true,
 			},
 		},
 	}

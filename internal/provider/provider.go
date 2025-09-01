@@ -1,3 +1,6 @@
+// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -58,18 +61,25 @@ func (p *OpenWRTProvider) Metadata(ctx context.Context, req provider.MetadataReq
 
 func (p *OpenWRTProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: `This provider connets to openwrt routers through the UCI JSON RPC API.
+
+The JSON RPC API requires a couple of packages to be used. Please see [Using the JSON-RPC API](https://github.com/openwrt/luci/blob/master/docs/JsonRpcHowTo.md) from openwrt.`,
+		Description: "Terraform, or OpenTofu, provider to manage openwrt routers",
 		Attributes: map[string]schema.Attribute{
 			"remote": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
-				Required:            true,
+				MarkdownDescription: `The username of the admin account. Optionally OPENWRT_REMOTE env variable can be set and used to specify the remote url. One between this attribute or the env variable must be set`,
+				Description:         `The username of the admin account. Optionally OPENWRT_REMOTE env variable can be set and used to specify the remote url. One between this attribute or the env variable must be set`,
+				Optional:            true,
 			},
 			"user": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
-				Required:            true,
+				MarkdownDescription: `The password of the account. Optionally OPENWRT_USER env variable can be set and used to specify the user. One between this attribute or the env variable must be set`,
+				Description:         `The password of the account. Optionally OPENWRT_USER env variable can be set and used to specify the user. One between this attribute or the env variable must be set`,
+				Optional:            true,
 			},
 			"password": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
-				Required:            true,
+				MarkdownDescription: `The URL of the JSON RPC API. Optionally OPENWRT_PASSWORD env variable can be set and used to specify the password. One between this attribute or the env variable must be set`,
+				Description:         `The URL of the JSON RPC API. Optionally OPENWRT_PASSWORD env variable can be set and used to specify the password. One between this attribute or the env variable must be set`,
+				Optional:            true,
 			},
 		},
 	}
