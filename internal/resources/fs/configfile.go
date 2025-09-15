@@ -176,7 +176,7 @@ func (c ConfigFileResource) Delete(ctx context.Context, req resource.DeleteReque
 func (c *ConfigFileResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	var state ConfigFileModel
 
-	path := path.Join("/etc/config", req.ID)
+	path := path.Join(etcConfig, req.ID)
 	b, err := c.provider.ReadFile(ctx, path)
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Name.ValueString()), err.Error())

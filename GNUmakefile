@@ -9,13 +9,10 @@ EXCLUDED_PACKAGES := \
 
 PACKAGES := $(shell go list ./... | grep -Fvx -f <(printf '%s\n' $(EXCLUDED_PACKAGES)))
 
-.PHONY: bin-deps clean fmt lint install generate build test snapshot release
+.PHONY: clean fmt lint install generate build test snapshot release
 default: clean fmt lint install generate
 
-bin-deps:
-	go install go.uber.org/mock/mockgen@latest
-
-clean: bin-deps
+clean:
 	rm -Rfv $(OUT) dist
 	mkdir -p $(OUT)
 
@@ -31,7 +28,7 @@ install:
 generate:
 	go generate -v ./...; cd tools; go generate -v ./...
 
-build:
+build: generate
 	go build -v
 
 test:

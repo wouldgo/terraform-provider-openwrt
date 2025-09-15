@@ -1,6 +1,8 @@
 module github.com/foxboron/terraform-provider-openwrt
 
-go 1.23.7
+go 1.25.1
+
+tool go.uber.org/mock/mockgen
 
 require (
 	dario.cat/mergo v1.0.2

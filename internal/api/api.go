@@ -1,7 +1,7 @@
 // Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
 // SPDX-License-Identifier: MPL-2.0
 
-//go:generate mockgen -destination=../../mocks/api.go -package=mocks -source=api.go -typed=true
+//go:generate go tool mockgen -destination=../../mocks/api.go -package=mocks -source=api.go -typed=true
 
 // -build_constraint test
 package api
