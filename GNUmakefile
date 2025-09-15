@@ -10,7 +10,7 @@ EXCLUDED_PACKAGES := \
 PACKAGES := $(shell go list ./... | grep -Fvx -f <(printf '%s\n' $(EXCLUDED_PACKAGES)))
 
 .PHONY: clean fmt lint install generate build test snapshot release
-default: clean fmt lint install generate
+default: clean fmt install generate lint
 
 clean:
 	rm -Rfv $(OUT) dist
