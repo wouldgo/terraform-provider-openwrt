@@ -13,7 +13,7 @@ PACKAGES := $(shell go list ./... | grep -Fvx -f <(printf '%s\n' $(EXCLUDED_PACK
 default: clean fmt install generate lint
 
 clean:
-	rm -Rfv $(OUT) dist
+	rm -Rfv $(OUT) dist mocks
 	mkdir -p $(OUT)
 
 fmt:
