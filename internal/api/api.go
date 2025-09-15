@@ -1,101 +1,107 @@
+// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// SPDX-License-Identifier: MPL-2.0
+
+//go:generate go tool mockgen -destination=../../mocks/api.go -package=mocks -source=api.go -typed=true
+
+// -build_constraint test
 package api
 
 import (
 	"bytes"
-	"encoding/base64"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
-	"strings"
-
-	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"time"
 )
 
-// func Encode[T any](w http.ResponseWriter, status int, v T) error {
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(status)
-// 	if err := json.NewEncoder(w).Encode(v); err != nil {
-// 		return fmt.Errorf("encode json: %w", err)
-// 	}
-// 	return nil
-// }
-//
-// func Decode[T any](b io.ReadCloser) (T, error) {
-// 	var v T
-// 	if err := json.NewDecoder(b).Decode(&v); err != nil {
-// 		return v, fmt.Errorf("decode json: %w", err)
-// 	}
-// 	return v, nil
-// }
-
-func Unmarshal[T any](b json.RawMessage) (T, error) {
-	var v T
-	if err := json.Unmarshal(b, &v); err != nil {
-		return v, fmt.Errorf("decode json: %w", err)
-	}
-	return v, nil
+type ClientFactory interface {
+	Get(url string) (Client, error)
 }
 
-// Merges a into b
-func Merge[T any](a, b any) (T, error) {
-	var v T
-	var ma, mb map[string]json.RawMessage
+type Client interface {
+	Auth(ctx context.Context, username, password string) error
 
-	// Turn a,b any to bytes
-	ba, err := json.Marshal(a)
-	if err != nil {
-		return *new(T), err
-	}
-	bb, err := json.Marshal(b)
-	if err != nil {
-		return *new(T), err
-	}
+	//UCI
+	GetAll(ctx context.Context, section ...any) ([]System, error)
+	GetSystem(ctx context.Context) (*System, error)
+	TSet(ctx context.Context, data any, section ...any) error
+	Add(ctx context.Context, section ...any) (string, error)
+	Delete(ctx context.Context, section ...any) error
+	CommitOrRevert(ctx context.Context, section ...any) error
 
-	// Turn ba and bb into our shimming map string -> raw message
-	if err := json.Unmarshal(ba, &ma); err != nil {
-		return *new(T), nil
-	}
-	if err := json.Unmarshal(bb, &mb); err != nil {
-		return *new(T), nil
-	}
+	//FS
+	Writefile(ctx context.Context, path string, data []byte) error
+	ReadFile(ctx context.Context, path string) ([]byte, error)
+	RemoveFile(ctx context.Context, path string) error
 
-	// Merge values from a into b
-	// We could implement more logic here for special fields
-	for k, v := range ma {
-		mb[k] = v
-		// switch k {
-		// case ".name", ".anonymous", ".type":
-		// 	continue
-		// default:
-		// 	mb[k] = v
-		// }
-	}
-
-	// Marshal `mb` into T
-	bf, err := json.Marshal(mb)
-	if err != nil {
-		return *new(T), err
-	}
-	if err := json.Unmarshal(bf, &v); err != nil {
-		return *new(T), err
-	}
-	return v, nil
+	//OPKG
+	UpdatePackages(ctx context.Context) error
+	CheckPackage(ctx context.Context, pack string) (*PackageInfo, error)
+	InstallPackages(ctx context.Context, packages ...string) error
+	RemovePackages(ctx context.Context, packages ...string) error
 }
 
-type Client struct {
-	url   string
-	token string
+var (
+	_ ClientFactory = (*clientFactory)(nil)
+	_ Client        = (*client)(nil)
+
+	ErrMissingUrl           = fmt.Errorf("missing remote url")
+	ErrParsing              = fmt.Errorf("parsing error")
+	ErrMarshal              = fmt.Errorf("json marshal in error")
+	ErrHttpRequestCreation  = fmt.Errorf("http request creation in error")
+	ErrHttpRequestExecution = fmt.Errorf("http request execution in error")
+	ErrUnMarshal            = fmt.Errorf("json unmarshal in error")
+	ErrAuth                 = fmt.Errorf("authencation in error")
+	ErrEmptyResult          = fmt.Errorf("empty reply as result")
+	ErrRpcCommand           = fmt.Errorf("missing rpc command")
+	ErrRpcMethod            = fmt.Errorf("missing rpc method")
+	ErrRpcExecution         = fmt.Errorf("rpc exection error")
+
+	ErrFloatExpected   = fmt.Errorf("value not a float64 type")
+	ErrNonZeroRet      = fmt.Errorf("execution returned value different than zero")
+	ErrPackageNotFound = fmt.Errorf("package not found")
+
+	ErrPackagesNotSpecified = fmt.Errorf("no packages specified")
+)
+
+type clientFactory struct {
 }
 
-func NewClient(url string) *Client {
-	return &Client{
-		url: url,
+func NewClientFactory() (ClientFactory, error) {
+	return &clientFactory{}, nil
+}
+
+func (cf *clientFactory) Get(url string) (Client, error) {
+	return newClient(url)
+}
+
+type client struct {
+	*uci
+	*fs
+	*opkg
+	url    string
+	client *http.Client
+}
+
+func newClient(url string) (Client, error) {
+	if url == "" {
+		return nil, ErrMissingUrl
 	}
+
+	client := &client{
+		url:    url,
+		client: &http.Client{},
+	}
+
+	return client, nil
 }
 
-func (c *Client) Auth(username, password string) error {
+func (c *client) Auth(ctx context.Context, username, password string) error {
+	innerCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	b, err := json.Marshal(&struct {
 		Id     int      `json:"id"`
 		Method string   `json:"method"`
@@ -106,85 +112,142 @@ func (c *Client) Auth(username, password string) error {
 		Params: []string{username, password},
 	})
 	if err != nil {
-		return err
+		return errors.Join(ErrMarshal, err)
 	}
 	u, err := url.JoinPath(c.url, "cgi-bin/luci/rpc/auth")
 	if err != nil {
-		return err
+		return errors.Join(ErrParsing, err)
 	}
-	resp, err := http.Post(u, "application/json; charset=utf-8", bytes.NewReader(b))
+
+	req, err := http.NewRequestWithContext(innerCtx, http.MethodPost, u, bytes.NewBuffer(b))
 	if err != nil {
-		return err
+		return errors.Join(ErrHttpRequestCreation, err)
 	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return errors.Join(ErrHttpRequestExecution, err)
+	}
+
 	var data struct {
 		Result string `json:"result"`
 		Error  string `json:"error"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		log.Fatalf("Failed to read response body: %v", err)
+		return errors.Join(ErrUnMarshal, fmt.Errorf("failed to read authentication response body: %w", err))
 	}
-	c.token = data.Result
+
+	if data.Error != "" {
+		return errors.Join(ErrAuth, fmt.Errorf("authentication error: %s", data.Error))
+	}
+
+	if data.Result == "" {
+		return ErrEmptyResult
+	}
+
+	c.uci = &uci{
+		token:  &data.Result,
+		url:    &c.url,
+		client: c.client,
+	}
+	c.fs = &fs{
+		token:  &data.Result,
+		url:    &c.url,
+		client: c.client,
+	}
+	c.opkg = &opkg{
+		token:  &data.Result,
+		url:    &c.url,
+		client: c.client,
+	}
+
 	return nil
 }
 
-type jsonRPCResponseBody struct {
-	Error *struct {
-		Code    float64 `json:"code"`
-		Message string  `json:"message"`
-	} `json:"error"`
-	Result *json.RawMessage `json:"result"`
+type jsonRPCRequestBody struct {
+	Method string `json:"method"`
+	Params []any  `json:"params"`
 }
 
-func (c *Client) uciCall(rpc string, method string, params []any) (*json.RawMessage, error) {
-	u, err := url.Parse(c.url)
+var _ error = (*jsonRPCResponseError)(nil)
+
+type jsonRPCResponseError struct {
+	Code    float64 `json:"code"`
+	Message string  `json:"message"`
+}
+
+func (j *jsonRPCResponseError) Error() string {
+	return fmt.Sprintf("rpc call in error: %.0f: %s", j.Code, j.Message)
+}
+
+type jsonRPCResponseBody struct {
+	Error  *jsonRPCResponseError `json:"error"`
+	Result *json.RawMessage      `json:"result"`
+}
+
+func call(
+	ctx context.Context, client *http.Client,
+	remoteUrl, token, rpc, method string, params []any,
+) (json.RawMessage, error) {
+	innerCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	if remoteUrl == "" {
+		return nil, ErrMissingUrl
+	}
+	if token == "" {
+		return nil, errors.Join(ErrAuth, fmt.Errorf("no auth is performed against %s", remoteUrl))
+	}
+	if rpc == "" {
+		return nil, ErrRpcCommand
+	}
+	if method == "" {
+		return nil, ErrRpcMethod
+	}
+	u, err := url.Parse(remoteUrl)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrParsing, err)
 	}
 	u.Path = fmt.Sprintf("cgi-bin/luci/rpc/%s", rpc)
 	q := u.Query()
-	q.Add("auth", c.token)
+	q.Add("auth", token)
 	u.RawQuery = q.Encode()
 
-	b, err := json.Marshal(&struct {
-		Method string `json:"method"`
-		Params []any  `json:"params"`
-	}{
+	b, err := json.Marshal(&jsonRPCRequestBody{
 		Method: method,
 		Params: params,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrMarshal, err)
 	}
-	fmt.Println(string(b))
-	resp, err := http.Post(u.String(), "application/json; charset=utf-8", bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(innerCtx, http.MethodPost, u.String(), bytes.NewBuffer(b))
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrHttpRequestCreation, err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	fmt.Printf("%s - %s: %s", req.Method, req.URL, string(b))
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, errors.Join(ErrHttpRequestExecution, err)
 	}
 	var responseBody jsonRPCResponseBody
 	decoder := json.NewDecoder(resp.Body)
+	defer resp.Body.Close() //nolint:errcheck
 	if err = decoder.Decode(&responseBody); err != nil {
-		return nil, err
+		return nil, errors.Join(ErrUnMarshal, err)
 	}
 	if responseBody.Error != nil {
-		return nil, fmt.Errorf((*responseBody.Error).Message)
+		return nil, errors.Join(ErrRpcExecution, responseBody.Error)
 	}
-	return responseBody.Result, nil
-}
 
-func (c *Client) UCIGetAll(section ...any) (*json.RawMessage, error) {
-	return c.uciCall("uci", "get_all", section)
-}
-
-func UCIGetAllT[T any](c *Client, section ...any) (T, error) {
-	r, err := c.uciCall("uci", "get_all", section)
-	if err != nil {
-		return *new(T), err
+	if responseBody.Result == nil {
+		return nil, ErrEmptyResult
 	}
-	return Unmarshal[T](*r)
+
+	return *responseBody.Result, nil
 }
 
 // Purge the sections from the anonymous things
-func PurgeFields(d any) (any, error) {
+func purgeFields(d any) (any, error) {
 	b, err := json.Marshal(d)
 	if err != nil {
 		return nil, err
@@ -197,115 +260,4 @@ func PurgeFields(d any) (any, error) {
 	delete(objmap, ".anonymous")
 	delete(objmap, ".type")
 	return objmap, nil
-}
-
-func (c *Client) UCITSet(data any, section ...any) (*json.RawMessage, error) {
-	data, err := PurgeFields(&data)
-	if err != nil {
-		return nil, err
-	}
-	section = append(section, data)
-	return c.uciCall("uci", "tset", section)
-}
-
-func (c *Client) UCISection(data any, section ...any) (*json.RawMessage, error) {
-	data, err := PurgeFields(&data)
-	if err != nil {
-		return nil, err
-	}
-	section = append(section, data)
-	return c.uciCall("uci", "section", section)
-}
-
-func (c *Client) UCIAdd(section ...any) (string, error) {
-	raw, err := c.uciCall("uci", "add", section)
-	if err != nil {
-		return "", err
-	}
-	var s string
-	if err := json.Unmarshal(*raw, &s); err != nil {
-		return "", err
-	}
-	return s, nil
-}
-
-func (c *Client) UCICommit(section ...any) (*json.RawMessage, error) {
-	return c.uciCall("uci", "commit", section)
-}
-
-func (c *Client) UCIRevert(section ...any) (*json.RawMessage, error) {
-	return c.uciCall("uci", "revert", section)
-}
-
-func (c *Client) UCICommitAndRevert(section ...any) (*json.RawMessage, diag.Diagnostics) {
-	var diag diag.Diagnostics
-	r, err := c.UCICommit(section...)
-	if err != nil {
-		diag.AddError(fmt.Sprintf("Failed to update configu %q", section), err.Error())
-		_, err = c.UCIRevert(section...)
-		if err != nil {
-			diag.AddError(fmt.Sprintf("Failed to revert configu %q", section), err.Error())
-			return nil, diag
-		}
-	}
-	return r, diag
-}
-
-func (c *Client) UCIDelete(section ...any) (*json.RawMessage, error) {
-	return c.uciCall("uci", "delete", section)
-}
-
-func (c *Client) Writefile(path string, data []byte) (*json.RawMessage, error) {
-	return c.uciCall("fs", "writefile", []any{path, data})
-}
-
-func (c *Client) ReadFile(path string) ([]byte, error) {
-	raw, err := c.uciCall("fs", "readfile", []any{path})
-	if err != nil {
-		return nil, err
-	}
-	var s string
-	if err := json.Unmarshal(*raw, &s); err != nil {
-		return nil, err
-	}
-	return base64.StdEncoding.DecodeString(s)
-}
-
-func (c *Client) RemoveFile(path string) (*json.RawMessage, error) {
-	return c.uciCall("fs", "remove", []any{path})
-}
-
-type AnonymousSection struct {
-	Name      string `json:".name"`
-	Anonymous bool   `json:".anonymous"`
-	Type      string `json:".type"`
-}
-
-func IsAnonymousSection(raw json.RawMessage) bool {
-	var anon AnonymousSection
-	if err := json.Unmarshal(raw, &anon); err != nil {
-		panic(err)
-	}
-	return anon.Anonymous == true && anon.Type == "system"
-}
-
-func (c *Client) UCIGetSystem() (json.RawMessage, error) {
-	raw, err := c.UCIGetAll("system")
-	if err != nil {
-		return nil, err
-	}
-	var objmap map[string]json.RawMessage
-	if err := json.Unmarshal(*raw, &objmap); err != nil {
-		panic(err)
-	}
-	for k, v := range objmap {
-		// We are partially assuming that the system settings is the first anonymous section
-		if !strings.Contains(k, "cfg") {
-			continue
-		}
-		if IsAnonymousSection(v) {
-			return v, nil
-		}
-	}
-	return nil, fmt.Errorf("did not find the system section")
 }

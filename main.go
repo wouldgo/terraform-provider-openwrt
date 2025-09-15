@@ -1,3 +1,6 @@
+// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// SPDX-License-Identifier: MPL-2.0
+
 package main
 
 import (
@@ -5,6 +8,7 @@ import (
 	"flag"
 	"log"
 
+	"github.com/foxboron/terraform-provider-openwrt/internal/api"
 	"github.com/foxboron/terraform-provider-openwrt/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
@@ -24,7 +28,12 @@ func main() {
 		Debug:   debug,
 	}
 
-	err := providerserver.Serve(context.Background(), provider.New(version), opts)
+	clientFactory, err := api.NewClientFactory()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	err = providerserver.Serve(context.Background(), provider.New(version, clientFactory), opts)
 
 	if err != nil {
 		log.Fatal(err.Error())

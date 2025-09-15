@@ -41,7 +41,7 @@ func (b BoolValue) MarshalJSON() ([]byte, error) {
 	if b.IsNull() || b.IsUnknown() {
 		return []byte("null"), nil
 	}
-	return json.Marshal(b.BoolValue.ValueBool())
+	return json.Marshal(b.ValueBool())
 }
 
 func (v BoolValue) Equal(o attr.Value) bool {

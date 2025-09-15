@@ -1,0 +1,4 @@
+_out/
+mocks/
+terraform-provider-openwrt
+dist/
