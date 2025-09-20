@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
-type SystemModel struct {
+type systemModel struct {
 	Id        types.StringValue `tfsdk:"id"`
 	Type      types.StringValue `tfsdk:"type"`
 	Anonymous types.BoolValue   `tfsdk:"anonymous"`
@@ -45,23 +45,22 @@ type SystemModel struct {
 	ZramSizeMb      types.StringValue `tfsdk:"zram_size_mb"`
 }
 
-// ProjectResource represent Incus project resource.
-type SystemResource struct {
+type systemResource struct {
 	provider api.Client
 }
 
-// NewProjectResource return new project resource.
+// NewSystemResource return new project resource.
 func NewSystemResource() resource.Resource {
-	return &SystemResource{}
+	return &systemResource{}
 }
 
 // Metadata for project resource.
-func (s SystemResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (s systemResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = fmt.Sprintf("%s_system", req.ProviderTypeName)
 }
 
 // Schema for system resource.
-func (s SystemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (s systemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manage the system settings in openwrt",
 		Description:         "Manage the system settings in openwrt",
@@ -234,7 +233,7 @@ func (s SystemResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 	}
 }
 
-func (s *SystemResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (s *systemResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	data := req.ProviderData
 	if data == nil {
 		return
@@ -247,8 +246,8 @@ func (s *SystemResource) Configure(_ context.Context, req resource.ConfigureRequ
 	s.provider = provider
 }
 
-func (s SystemResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan SystemModel
+func (s systemResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan systemModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -279,8 +278,8 @@ func (s SystemResource) Create(ctx context.Context, req resource.CreateRequest, 
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func (s SystemResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state SystemModel
+func (s systemResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state systemModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -300,15 +299,15 @@ func (s SystemResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
-func (s SystemResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var state SystemModel
+func (s systemResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var state systemModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var plan SystemModel
+	var plan systemModel
 	diags = req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -340,8 +339,8 @@ func (s SystemResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
-func (s SystemResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state SystemModel
+func (s systemResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state systemModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -359,7 +358,7 @@ func (s SystemResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	}
 }
 
-func (s *SystemResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (s *systemResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	sm, err := s.provider.GetSystem(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to import state", err.Error())
