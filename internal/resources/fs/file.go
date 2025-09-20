@@ -15,25 +15,25 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type FileModel struct {
+type fileModel struct {
 	Path    types.String `tfsdk:"path"`
 	Name    types.String `tfsdk:"name"`
 	Content types.String `tfsdk:"content"`
 }
 
-type FileResource struct {
+type fileResource struct {
 	provider api.Client
 }
 
 func NewFileResource() resource.Resource {
-	return &FileResource{}
+	return &fileResource{}
 }
 
-func (c FileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (c fileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = fmt.Sprintf("%s_file", req.ProviderTypeName)
 }
 
-func (c FileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (c fileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Write configuration files to an arbitray path on the OpenWRT router.",
 		Description:         "Write configuration files to an arbitray path on the OpenWRT router.",
@@ -57,7 +57,7 @@ func (c FileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 	}
 }
 
-func (c *FileResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (c *fileResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	data := req.ProviderData
 	if data == nil {
 		return
@@ -70,8 +70,8 @@ func (c *FileResource) Configure(_ context.Context, req resource.ConfigureReques
 	c.provider = provider
 }
 
-func (c FileResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan FileModel
+func (c fileResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan fileModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -88,8 +88,8 @@ func (c FileResource) Create(ctx context.Context, req resource.CreateRequest, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func (c FileResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state FileModel
+func (c fileResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state fileModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -110,8 +110,8 @@ func (c FileResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
-func (c FileResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan FileModel
+func (c fileResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan fileModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -126,8 +126,8 @@ func (c FileResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func (c FileResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state FileModel
+func (c fileResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state fileModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
