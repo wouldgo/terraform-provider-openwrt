@@ -15,23 +15,23 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
-type OpkgModel struct {
+type opkgModel struct {
 	Packages types.List `tfsdk:"packages"`
 }
 
-type OpkgResource struct {
+type opkgResource struct {
 	provider api.Client
 }
 
 func NewOpkgResource() resource.Resource {
-	return &OpkgResource{}
+	return &opkgResource{}
 }
 
-func (c OpkgResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (c opkgResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = fmt.Sprintf("%s_opkg", req.ProviderTypeName)
 }
 
-func (c OpkgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (c opkgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Install packages on the router",
 		Description:         "Install packages on the router",
@@ -46,7 +46,7 @@ func (c OpkgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 	}
 }
 
-func (c *OpkgResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (c *opkgResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	data := req.ProviderData
 	if data == nil {
 		return
@@ -59,8 +59,8 @@ func (c *OpkgResource) Configure(_ context.Context, req resource.ConfigureReques
 	c.provider = provider
 }
 
-func (c OpkgResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan OpkgModel
+func (c opkgResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan opkgModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -96,8 +96,8 @@ func (c OpkgResource) Create(ctx context.Context, req resource.CreateRequest, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func (c OpkgResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state OpkgModel
+func (c opkgResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state opkgModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -133,9 +133,9 @@ func (c OpkgResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func (c OpkgResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var state OpkgModel
-	var plan OpkgModel
+func (c opkgResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var state opkgModel
+	var plan opkgModel
 
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -208,8 +208,8 @@ func (c OpkgResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func (c OpkgResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state OpkgModel
+func (c opkgResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state opkgModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
