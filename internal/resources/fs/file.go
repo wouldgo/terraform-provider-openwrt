@@ -22,7 +22,7 @@ type fileModel struct {
 }
 
 type fileResource struct {
-	provider api.Client
+	fsFacade api.FsFacade
 }
 
 func NewFileResource() resource.Resource {
@@ -62,12 +62,12 @@ func (c *fileResource) Configure(_ context.Context, req resource.ConfigureReques
 	if data == nil {
 		return
 	}
-	provider, ok := data.(api.Client)
+	fsFacade, ok := data.(api.FsFacade)
 	if !ok {
-		resp.Diagnostics.AddError("Failed to get api client", "")
+		resp.Diagnostics.AddError("Failed to get fs facade", "")
 		return
 	}
-	c.provider = provider
+	c.fsFacade = fsFacade
 }
 
 func (c fileResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -80,7 +80,7 @@ func (c fileResource) Create(ctx context.Context, req resource.CreateRequest, re
 
 	path := path.Join(plan.Path.ValueString(), plan.Name.ValueString())
 
-	if err := c.provider.Writefile(ctx, path, []byte(plan.Content.ValueString())); err != nil {
+	if err := c.fsFacade.Writefile(ctx, path, []byte(plan.Content.ValueString())); err != nil {
 		resp.Diagnostics.AddError("Failed to write file", err.Error())
 		return
 	}
@@ -96,7 +96,7 @@ func (c fileResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		return
 	}
 	path := path.Join(state.Path.ValueString(), state.Name.ValueString())
-	b, err := c.provider.ReadFile(ctx, path)
+	b, err := c.fsFacade.ReadFile(ctx, path)
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to read config %q", state.Name.ValueString()), err.Error())
 		return
@@ -119,7 +119,7 @@ func (c fileResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 
 	path := path.Join(plan.Path.ValueString(), plan.Name.ValueString())
-	if err := c.provider.Writefile(ctx, path, []byte(plan.Content.ValueString())); err != nil {
+	if err := c.fsFacade.Writefile(ctx, path, []byte(plan.Content.ValueString())); err != nil {
 		resp.Diagnostics.AddError("Failed to write file", err.Error())
 	}
 
@@ -135,7 +135,7 @@ func (c fileResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 	}
 
 	path := path.Join(state.Path.ValueString(), state.Name.ValueString())
-	err := c.provider.RemoveFile(ctx, path)
+	err := c.fsFacade.RemoveFile(ctx, path)
 	if err != nil {
 		resp.Diagnostics.AddError(fmt.Sprintf("Failed to delete config file %q", state.Name.ValueString()), err.Error())
 		return
