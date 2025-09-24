@@ -24,35 +24,12 @@ type ClientFactory interface {
 }
 
 type Client interface {
+	SystemFacade
+	FsFacade
+	OpkgFacade
+	InitFacade
+
 	Auth(ctx context.Context, username, password string) error
-
-	//UCI
-	GetAll(ctx context.Context, section ...any) ([]System, error)
-	GetSystem(ctx context.Context) (*System, error)
-	TSet(ctx context.Context, data any, section ...any) error
-	Add(ctx context.Context, section ...any) (string, error)
-	Delete(ctx context.Context, section ...any) error
-	CommitOrRevert(ctx context.Context, section ...any) error
-
-	//FS
-	Writefile(ctx context.Context, path string, data []byte) error
-	ReadFile(ctx context.Context, path string) ([]byte, error)
-	RemoveFile(ctx context.Context, path string) error
-
-	//OPKG
-	UpdatePackages(ctx context.Context) error
-	CheckPackage(ctx context.Context, pack string) (*PackageInfo, error)
-	InstallPackages(ctx context.Context, packages ...string) error
-	RemovePackages(ctx context.Context, packages ...string) error
-
-	//INIT
-	ListServices(ctx context.Context) ([]string, error)
-	IsEnabled(ctx context.Context, serviceName string) (bool, error)
-	DisableService(ctx context.Context, serviceName string) error
-	EnableService(ctx context.Context, serviceName string) error
-	StartService(ctx context.Context, serviceName string) error
-	StopSevice(ctx context.Context, serviceName string) error
-	RestartService(ctx context.Context, serviceName string) error
 }
 
 var (

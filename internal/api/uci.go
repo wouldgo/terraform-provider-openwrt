@@ -13,6 +13,17 @@ import (
 	"slices"
 )
 
+type SystemFacade interface {
+	GetAll(ctx context.Context, section ...any) ([]System, error)
+	GetSystem(ctx context.Context) (*System, error)
+	TSet(ctx context.Context, data any, section ...any) error
+	Add(ctx context.Context, section ...any) (string, error)
+	Delete(ctx context.Context, section ...any) error
+	CommitOrRevert(ctx context.Context, section ...any) error
+}
+
+var _ SystemFacade = (*uci)(nil)
+
 type uci struct {
 	token  *string
 	url    *string

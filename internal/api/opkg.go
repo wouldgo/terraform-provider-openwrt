@@ -11,6 +11,15 @@ import (
 	"net/http"
 )
 
+type OpkgFacade interface {
+	UpdatePackages(ctx context.Context) error
+	CheckPackage(ctx context.Context, pack string) (*PackageInfo, error)
+	InstallPackages(ctx context.Context, packages ...string) error
+	RemovePackages(ctx context.Context, packages ...string) error
+}
+
+var _ OpkgFacade = (*opkg)(nil)
+
 type opkg struct {
 	token  *string
 	url    *string

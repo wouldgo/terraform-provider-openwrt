@@ -10,6 +10,14 @@ import (
 	"net/http"
 )
 
+type FsFacade interface {
+	Writefile(ctx context.Context, path string, data []byte) error
+	ReadFile(ctx context.Context, path string) ([]byte, error)
+	RemoveFile(ctx context.Context, path string) error
+}
+
+var _ FsFacade = (*fs)(nil)
+
 type fs struct {
 	token  *string
 	url    *string

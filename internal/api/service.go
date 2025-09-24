@@ -11,6 +11,18 @@ import (
 	"net/http"
 )
 
+type InitFacade interface {
+	ListServices(ctx context.Context) ([]string, error)
+	IsEnabled(ctx context.Context, serviceName string) (bool, error)
+	DisableService(ctx context.Context, serviceName string) error
+	EnableService(ctx context.Context, serviceName string) error
+	StartService(ctx context.Context, serviceName string) error
+	StopSevice(ctx context.Context, serviceName string) error
+	RestartService(ctx context.Context, serviceName string) error
+}
+
+var _ InitFacade = (*service)(nil)
+
 type service struct {
 	token  *string
 	url    *string
