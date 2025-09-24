@@ -1,7 +1,7 @@
 // Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
 // SPDX-License-Identifier: MPL-2.0
 
-package provider_test
+package opkg_test
 
 import (
 	"context"
@@ -10,30 +10,17 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/foxboron/terraform-provider-openwrt/internal/testutil"
+
 	"github.com/foxboron/terraform-provider-openwrt/internal/api"
-	"github.com/foxboron/terraform-provider-openwrt/internal/provider"
 	"github.com/foxboron/terraform-provider-openwrt/mocks"
 	tfjson "github.com/hashicorp/terraform-json"
-	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"go.uber.org/mock/gomock"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 )
-
-// func testAccPreCheck(t *testing.T) {
-// 	// You can add code here to run prior to any test case execution, for example assertions
-// 	// about the appropriate environment variables being set are common to see in a pre-check
-// 	// function.
-// }
-
-func testAccFactories(clientFactory api.ClientFactory) map[string]func() (tfprotov6.ProviderServer, error) {
-	return map[string]func() (tfprotov6.ProviderServer, error){
-		"openwrt": providerserver.NewProtocol6WithError(provider.New("test", clientFactory)()),
-	}
-}
 
 func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 	os.Setenv("TF_ACC", "1")    //nolint:errcheck
@@ -43,7 +30,7 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
-	testAccProtoV6ProviderFactories := testAccFactories(clientFactory)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -128,9 +115,9 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
-						&actionPlanChecker{
-							addr:   "openwrt_opkg.test",
-							action: tfjson.ActionCreate,
+						&testutil.ActionPlanChecker{
+							Addr:   "openwrt_opkg.test",
+							Action: tfjson.ActionCreate,
 						},
 					},
 					PostApplyPreRefresh: []plancheck.PlanCheck{
@@ -141,8 +128,8 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 					},
 				},
 				ConfigStateChecks: []statecheck.StateCheck{
-					&stateChecker{
-						addr: "openwrt_opkg.test",
+					&testutil.StateChecker{
+						Addr: "openwrt_opkg.test",
 					},
 				},
 			},
@@ -158,7 +145,7 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
-	testAccProtoV6ProviderFactories := testAccFactories(clientFactory)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -225,9 +212,9 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
-						&actionPlanChecker{
-							addr:   "openwrt_opkg.test",
-							action: tfjson.ActionCreate,
+						&testutil.ActionPlanChecker{
+							Addr:   "openwrt_opkg.test",
+							Action: tfjson.ActionCreate,
 						},
 					},
 					PostApplyPreRefresh: []plancheck.PlanCheck{
@@ -238,8 +225,8 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 					},
 				},
 				ConfigStateChecks: []statecheck.StateCheck{
-					&stateChecker{
-						addr: "openwrt_opkg.test",
+					&testutil.StateChecker{
+						Addr: "openwrt_opkg.test",
 					},
 				},
 			},
@@ -255,7 +242,7 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
-	testAccProtoV6ProviderFactories := testAccFactories(clientFactory)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -362,9 +349,9 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
-						&actionPlanChecker{
-							addr:   "openwrt_opkg.test",
-							action: tfjson.ActionCreate,
+						&testutil.ActionPlanChecker{
+							Addr:   "openwrt_opkg.test",
+							Action: tfjson.ActionCreate,
 						},
 					},
 					PostApplyPreRefresh: []plancheck.PlanCheck{
@@ -375,8 +362,8 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 					},
 				},
 				ConfigStateChecks: []statecheck.StateCheck{
-					&stateChecker{
-						addr: "openwrt_opkg.test",
+					&testutil.StateChecker{
+						Addr: "openwrt_opkg.test",
 					},
 				},
 			},
@@ -396,9 +383,9 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
-						&actionPlanChecker{
-							addr:   "openwrt_opkg.test",
-							action: tfjson.ActionUpdate,
+						&testutil.ActionPlanChecker{
+							Addr:   "openwrt_opkg.test",
+							Action: tfjson.ActionUpdate,
 						},
 					},
 					PostApplyPreRefresh: []plancheck.PlanCheck{
@@ -409,8 +396,8 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 					},
 				},
 				ConfigStateChecks: []statecheck.StateCheck{
-					&stateChecker{
-						addr: "openwrt_opkg.test",
+					&testutil.StateChecker{
+						Addr: "openwrt_opkg.test",
 					},
 				},
 			},
@@ -429,9 +416,9 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
-						&actionPlanChecker{
-							addr:   "openwrt_opkg.test",
-							action: tfjson.ActionUpdate,
+						&testutil.ActionPlanChecker{
+							Addr:   "openwrt_opkg.test",
+							Action: tfjson.ActionUpdate,
 						},
 					},
 					PostApplyPreRefresh: []plancheck.PlanCheck{
@@ -442,8 +429,8 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 					},
 				},
 				ConfigStateChecks: []statecheck.StateCheck{
-					&stateChecker{
-						addr: "openwrt_opkg.test",
+					&testutil.StateChecker{
+						Addr: "openwrt_opkg.test",
 					},
 				},
 			},
@@ -459,7 +446,7 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
-	testAccProtoV6ProviderFactories := testAccFactories(clientFactory)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -558,7 +545,7 @@ func TestAccOpkg_CheckPackageInCreateIsFailing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
-	testAccProtoV6ProviderFactories := testAccFactories(clientFactory)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -623,7 +610,7 @@ func TestAccOpkg_InstallPackagesIsFailing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
-	testAccProtoV6ProviderFactories := testAccFactories(clientFactory)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -699,7 +686,7 @@ func TestAccOpkg_CheckPackageInUpdateIsFailing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
-	testAccProtoV6ProviderFactories := testAccFactories(clientFactory)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
