@@ -37,21 +37,21 @@ func (s serviceResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		Description:         "Enable/Disable specific services on the router, verifing conditions that trigger the restart on the router",
 		Attributes: map[string]schema.Attribute{
 			"name": schema.StringAttribute{
-				Required:            true,
 				MarkdownDescription: "The service name to operate with",
 				Description:         "The service name to operate with",
+				Required:            true,
 			},
 			"enabled": schema.BoolAttribute{
-				Optional:            true,
-				Computed:            true,
 				MarkdownDescription: "Whether the service must be enabled",
 				Description:         "Whether the service must be enabled",
+				Optional:            true,
+				Computed:            true,
 			},
 			"triggers": schema.MapAttribute{
-				Optional:            true,
-				ElementType:         types.StringType,
 				MarkdownDescription: "Key/value map that forces update when changed",
 				Description:         "Key/value map that forces update when changed",
+				ElementType:         types.StringType,
+				Optional:            true,
 			},
 		},
 	}
@@ -93,9 +93,9 @@ func (s serviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	if state.Enabled.IsUnknown() || state.Enabled.IsNull() {
-		serviceName := state.Name.String()
+	serviceName := state.Name.ValueString()
 
+	if state.Enabled.IsUnknown() || state.Enabled.IsNull() {
 		enabled, err := s.initFacade.IsEnabled(ctx, serviceName)
 		if err != nil {
 			resp.Diagnostics.AddError("checking if service is enabled in error", fmt.Sprintf("%s: %v", serviceName, err))
@@ -124,26 +124,16 @@ func (s serviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	serviceName := plan.Name.String()
-	value, err := plan.Enabled.ToTerraformValue(ctx)
-	if err != nil {
-		resp.Diagnostics.AddError("can not retrieve value from plan", fmt.Sprintf("%s(%s): %v", serviceName, plan.Enabled.String(), err))
-		return
-	}
-	var toEnable bool
-	err = value.As(&toEnable)
-	if err != nil {
-		resp.Diagnostics.AddError("value cannot be read", fmt.Sprintf("service %s enabled value %s not readable as bool: %v", serviceName, value, err))
-		return
-	}
+	toEnable := plan.Enabled.ValueBool()
 
 	if !plan.Enabled.Equal(state.Enabled) {
 		if toEnable {
-			if err = s.initFacade.EnableService(ctx, serviceName); err != nil {
+			if err := s.initFacade.EnableService(ctx, serviceName); err != nil {
 				resp.Diagnostics.AddError("failed to enable service", fmt.Sprintf("%s: %v", serviceName, err))
 				return
 			}
 		} else {
-			if err = s.initFacade.DisableService(ctx, serviceName); err != nil {
+			if err := s.initFacade.DisableService(ctx, serviceName); err != nil {
 				resp.Diagnostics.AddError("failed to disable service", fmt.Sprintf("%s: %v", serviceName, err))
 				return
 			}
@@ -168,26 +158,16 @@ func (s serviceResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
-	serviceName := state.Name.String()
-	value, err := state.Enabled.ToTerraformValue(ctx)
-	if err != nil {
-		resp.Diagnostics.AddError("can not retrieve value from state", fmt.Sprintf("%s(%s): %v", serviceName, state.Enabled.String(), err))
-		return
-	}
-	var toEnable bool
-	err = value.As(&toEnable)
-	if err != nil {
-		resp.Diagnostics.AddError("value cannot be read", fmt.Sprintf("service %s enabled value %s not readable as bool: %v", serviceName, value, err))
-		return
-	}
+	serviceName := state.Name.ValueString()
+	toEnable := state.Enabled.ValueBool()
 
 	if toEnable {
-		if err = s.initFacade.EnableService(ctx, serviceName); err != nil {
+		if err := s.initFacade.EnableService(ctx, serviceName); err != nil {
 			resp.Diagnostics.AddError("failed to enable service", fmt.Sprintf("%s: %v", serviceName, err))
 			return
 		}
 	} else {
-		if err = s.initFacade.DisableService(ctx, serviceName); err != nil {
+		if err := s.initFacade.DisableService(ctx, serviceName); err != nil {
 			resp.Diagnostics.AddError("failed to disable service", fmt.Sprintf("%s: %v", serviceName, err))
 			return
 		}

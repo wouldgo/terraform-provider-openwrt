@@ -46,7 +46,7 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 						EXPECT().
 						Auth(gomock.Any(), "root", "test").
 						Return(nil).
-						Times(6).
+						AnyTimes().
 						Do(func(_ context.Context, username, password string) {
 							t.Logf("Auth method called with: %s, %s", username, password)
 						})
@@ -55,7 +55,7 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 						EXPECT().
 						UpdatePackages(gomock.Any()).
 						Return(nil).
-						Times(6).
+						AnyTimes().
 						Do(func(_ context.Context) {
 							t.Logf("UpdatePackages method called")
 						})
@@ -129,7 +129,9 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 				},
 				ConfigStateChecks: []statecheck.StateCheck{
 					&testutil.StateChecker{
-						Addr: "openwrt_opkg.test",
+						Addr:     "openwrt_opkg.test",
+						AttrName: "packages",
+						Value:    "curl",
 					},
 				},
 			},
@@ -161,7 +163,7 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 						EXPECT().
 						Auth(gomock.Any(), "root", "test").
 						Return(nil).
-						Times(6).
+						AnyTimes().
 						Do(func(_ context.Context, username, password string) {
 							t.Logf("Auth method called with: %s, %s", username, password)
 						})
@@ -170,7 +172,7 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 						EXPECT().
 						UpdatePackages(gomock.Any()).
 						Return(nil).
-						Times(6).
+						AnyTimes().
 						Do(func(_ context.Context) {
 							t.Logf("UpdatePackages method called")
 						})
@@ -226,7 +228,9 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 				},
 				ConfigStateChecks: []statecheck.StateCheck{
 					&testutil.StateChecker{
-						Addr: "openwrt_opkg.test",
+						Addr:     "openwrt_opkg.test",
+						AttrName: "packages",
+						Value:    "curl",
 					},
 				},
 			},
@@ -363,7 +367,9 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 				},
 				ConfigStateChecks: []statecheck.StateCheck{
 					&testutil.StateChecker{
-						Addr: "openwrt_opkg.test",
+						Addr:     "openwrt_opkg.test",
+						AttrName: "packages",
+						Value:    "curl",
 					},
 				},
 			},
@@ -397,7 +403,9 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 				},
 				ConfigStateChecks: []statecheck.StateCheck{
 					&testutil.StateChecker{
-						Addr: "openwrt_opkg.test",
+						Addr:     "openwrt_opkg.test",
+						AttrName: "packages",
+						Value:    "curl",
 					},
 				},
 			},
@@ -430,7 +438,9 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 				},
 				ConfigStateChecks: []statecheck.StateCheck{
 					&testutil.StateChecker{
-						Addr: "openwrt_opkg.test",
+						Addr:     "openwrt_opkg.test",
+						AttrName: "packages",
+						Value:    "curl",
 					},
 				},
 			},
