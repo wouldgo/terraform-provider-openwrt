@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 )
 
@@ -110,11 +109,13 @@ func (s *service) StartService(ctx context.Context, serviceName string) error {
 		return err
 	}
 
-	var data any
+	var data bool
 	if err = json.Unmarshal(result, &data); err != nil {
 		return errors.Join(ErrUnMarshal, err)
 	}
-	fmt.Printf("data replied: %v", data)
+	if !data {
+		return errors.Join(ErrExecutionFailure)
+	}
 	return nil
 }
 
@@ -126,11 +127,13 @@ func (s *service) StopSevice(ctx context.Context, serviceName string) error {
 		return err
 	}
 
-	var data any
+	var data bool
 	if err = json.Unmarshal(result, &data); err != nil {
 		return errors.Join(ErrUnMarshal, err)
 	}
-	fmt.Printf("data replied: %v", data)
+	if !data {
+		return errors.Join(ErrExecutionFailure)
+	}
 	return nil
 }
 
