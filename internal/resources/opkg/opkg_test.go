@@ -45,60 +45,76 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 					client.
 						EXPECT().
 						Auth(gomock.Any(), "root", "test").
-						Return(nil).
-						AnyTimes().
-						Do(func(_ context.Context, username, password string) {
+						DoAndReturn(func(_ context.Context, username, password string) error {
 							t.Logf("Auth method called with: %s, %s", username, password)
-						})
+							return nil
+						}).
+						AnyTimes()
 
 					client.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
-						Return(nil).
-						AnyTimes().
-						Do(func(_ context.Context) {
+						DoAndReturn(func(_ context.Context) error {
 							t.Logf("UpdatePackages method called")
-						})
+							return nil
+						}).
+						AnyTimes()
+
 					clientFactory.
 						EXPECT().
 						Get("http://test.lan:8080").
-						Return(client, nil).
+						DoAndReturn(func(_ string) (api.Client, error) {
+							t.Logf("Get method called")
+							return client, nil
+						}).
 						AnyTimes()
 
 					checkPackagesNotInstalled := client.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						Return(&api.PackageInfo{
-							Version: "",
-							Status: api.Status{
-								Installed: false,
-							},
-						}, nil).
+						DoAndReturn(func(_ context.Context, _ string) (*api.PackageInfo, error) {
+							t.Logf("CheckPackage method called")
+							return &api.PackageInfo{
+								Version: "",
+								Status: api.Status{
+									Installed: false,
+								},
+							}, nil
+						}).
 						Times(1)
 
 					client.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						Return(&api.PackageInfo{
-							Version: "test",
-							Status: api.Status{
-								Installed: true,
-							},
-						}, nil).
+						DoAndReturn(func(_ context.Context, _ string) (*api.PackageInfo, error) {
+							t.Logf("CheckPackage method called")
+							return &api.PackageInfo{
+								Version: "test",
+								Status: api.Status{
+									Installed: true,
+								},
+							}, nil
+						}).
 						AnyTimes().
 						After(checkPackagesNotInstalled)
 
 					client.
 						EXPECT().
 						InstallPackages(gomock.Any(), "curl").
-						Return(nil).
+						DoAndReturn(func(_ context.Context, _ ...string) error {
+							t.Logf("InstallPackages method called")
+							return nil
+						}).
 						Times(1)
 
 					//Teardown resource
 					client.
 						EXPECT().
 						RemovePackages(gomock.Any(), "curl").
-						Return(nil).
+						DoAndReturn(func(_ context.Context, _ ...string) error {
+							t.Logf("RemovePackages method called")
+							return nil
+						}).
 						Times(1)
 				},
 				Config: `
@@ -162,42 +178,52 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 					client.
 						EXPECT().
 						Auth(gomock.Any(), "root", "test").
-						Return(nil).
-						AnyTimes().
-						Do(func(_ context.Context, username, password string) {
+						DoAndReturn(func(_ context.Context, username, password string) error {
 							t.Logf("Auth method called with: %s, %s", username, password)
-						})
+							return nil
+						}).
+						AnyTimes()
 
 					client.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
-						Return(nil).
-						AnyTimes().
-						Do(func(_ context.Context) {
+						DoAndReturn(func(_ context.Context) error {
 							t.Logf("UpdatePackages method called")
-						})
+							return nil
+						}).
+						AnyTimes()
+
 					clientFactory.
 						EXPECT().
 						Get("http://test.lan:8080").
-						Return(client, nil).
+						DoAndReturn(func(s string) (api.Client, error) {
+							t.Logf("Get method called")
+							return client, nil
+						}).
 						AnyTimes()
 
 					client.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						Return(&api.PackageInfo{
-							Version: "test",
-							Status: api.Status{
-								Installed: true,
-							},
-						}, nil).
+						DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+							t.Logf("CheckPackage method called")
+							return &api.PackageInfo{
+								Version: "test",
+								Status: api.Status{
+									Installed: true,
+								},
+							}, nil
+						}).
 						AnyTimes()
 
 					//Teardown resource
 					client.
 						EXPECT().
 						RemovePackages(gomock.Any(), "curl").
-						Return(nil).
+						DoAndReturn(func(ctx context.Context, s ...string) error {
+							t.Logf("RemovePackages method called")
+							return nil
+						}).
 						Times(1)
 				},
 				Config: `
@@ -257,85 +283,85 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 			client.
 				EXPECT().
 				Auth(gomock.Any(), "root", "test").
-				Return(nil).
-				AnyTimes().
-				Do(func(_ context.Context, username, password string) {
+				DoAndReturn(func(_ context.Context, username, password string) error {
 					t.Logf("Auth method called with: %s, %s", username, password)
-				})
+					return nil
+				}).
+				AnyTimes()
 
 			client.
 				EXPECT().
 				UpdatePackages(gomock.Any()).
-				Return(nil).
-				AnyTimes().
-				Do(func(_ context.Context) {
+				DoAndReturn(func(ctx context.Context) error {
 					t.Logf("UpdatePackages method called")
-				})
+					return nil
+				}).
+				AnyTimes()
 
 			clientFactory.
 				EXPECT().
 				Get("http://test.lan:8080").
-				Return(client, nil).
-				AnyTimes().
-				Do(func(remote string) {
+				DoAndReturn(func(remote string) (api.Client, error) {
 					t.Logf("Get method called with: %s", remote)
-				})
+					return client, nil
+				}).
+				AnyTimes()
 
 			client.
 				EXPECT().
 				CheckPackage(gomock.Any(), "curl").
-				Return(&api.PackageInfo{
-					Version: "test",
-					Status: api.Status{
-						Installed: true,
-					},
-				}, nil).
-				AnyTimes().
-				Do(func(_ context.Context, pack string) {
-					t.Logf("CheckPackage called with: %s. Returning that is installed", pack)
-				})
+				DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+					t.Logf("CheckPackage method called")
+					return &api.PackageInfo{
+						Version: "test",
+						Status: api.Status{
+							Installed: true,
+						},
+					}, nil
+				}).
+				AnyTimes()
 
 			client.
 				EXPECT().
 				InstallPackages(gomock.Any(), "wget").
-				Return(nil).
-				Times(1).
-				Do(func(_ context.Context, pack string) {
-					t.Logf("InstallPackages called with: %s", pack)
-				})
+				DoAndReturn(func(ctx context.Context, s ...string) error {
+					t.Logf("InstallPackages method called")
+					return nil
+				}).
+				Times(1)
 
 			client.
 				EXPECT().
 				CheckPackage(gomock.Any(), "wget").
-				Return(&api.PackageInfo{
-					Version: "test",
-					Status: api.Status{
-						Installed: true,
-					},
-				}, nil).
-				AnyTimes().
-				Do(func(_ context.Context, pack string) {
-					t.Logf("CheckPackage called with: %s. Returning that is installed", pack)
-				})
+				DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+					t.Logf("CheckPackage method called")
+					return &api.PackageInfo{
+						Version: "test",
+						Status: api.Status{
+							Installed: true,
+						},
+					}, nil
+				}).
+				AnyTimes()
 
 			//Teardown resource
 			client.
 				EXPECT().
 				RemovePackages(gomock.Any(), "curl").
-				Return(nil).
-				Times(1).
-				Do(func(_ context.Context, pack string) {
-					t.Logf("RemovePackages called with: %s", pack)
-				})
+				DoAndReturn(func(ctx context.Context, s ...string) error {
+					t.Logf("RemovePackages method called")
+					return nil
+				}).
+				Times(1)
 
 			client.
 				EXPECT().
 				RemovePackages(gomock.Any(), "wget").
-				Return(nil).
-				Times(1).
-				Do(func(_ context.Context, pack string) {
-					t.Logf("RemovePackages called with: %s", pack)
-				})
+				DoAndReturn(func(ctx context.Context, s ...string) error {
+					t.Logf("RemovePackages method called")
+					return nil
+				}).
+				Times(1)
 		},
 		Steps: []resource.TestStep{
 			{
@@ -469,7 +495,10 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 					clientFactory.
 						EXPECT().
 						Get("http://test.lan:8080").
-						Return(nil, api.ErrMissingUrl).
+						DoAndReturn(func(s string) (api.Client, error) {
+							t.Logf("Get method called")
+							return nil, api.ErrMissingUrl
+						}).
 						Times(1)
 				},
 				Config: `
@@ -490,13 +519,19 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 					clientFactory.
 						EXPECT().
 						Get("http://test.lan:8080").
-						Return(client, nil).
+						DoAndReturn(func(s string) (api.Client, error) {
+							t.Logf("Get method called")
+							return client, nil
+						}).
 						Times(1)
 
 					client.
 						EXPECT().
 						Auth(gomock.Any(), "root", "test").
-						Return(errors.Join(api.ErrMarshal, errors.New("mon petit json"))).
+						DoAndReturn(func(ctx context.Context, s1, s2 string) error {
+							t.Logf("Auth method called")
+							return errors.Join(api.ErrMarshal, errors.New("mon petit json"))
+						}).
 						Times(1)
 				},
 				Config: `
@@ -517,19 +552,28 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 					clientFactory.
 						EXPECT().
 						Get("http://test.lan:8080").
-						Return(client, nil).
+						DoAndReturn(func(s string) (api.Client, error) {
+							t.Logf("Get method called")
+							return client, nil
+						}).
 						Times(1)
 
 					client.
 						EXPECT().
 						Auth(gomock.Any(), "root", "test").
-						Return(nil).
+						DoAndReturn(func(ctx context.Context, s1, s2 string) error {
+							t.Logf("Auth method called")
+							return nil
+						}).
 						Times(1)
 
 					client.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
-						Return(api.ErrFloatExpected).
+						DoAndReturn(func(ctx context.Context) error {
+							t.Logf("UpdatePackages method called")
+							return api.ErrFloatExpected
+						}).
 						Times(1)
 				},
 				Config: `
@@ -570,31 +614,37 @@ func TestAccOpkg_CheckPackageInCreateIsFailing(t *testing.T) {
 					clientFactory.
 						EXPECT().
 						Get("http://test.lan:8080").
-						Return(client, nil).
+						DoAndReturn(func(s string) (api.Client, error) {
+							t.Logf("Get method called")
+							return client, nil
+						}).
 						AnyTimes()
 
 					client.
 						EXPECT().
 						Auth(gomock.Any(), "root", "test").
-						Return(nil).
-						Times(2).
-						Do(func(_ context.Context, username, password string) {
+						DoAndReturn(func(_ context.Context, username, password string) error {
 							t.Logf("Auth method called with: %s, %s", username, password)
-						})
+							return nil
+						}).
+						Times(2)
 
 					client.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
-						Return(nil).
-						Times(2).
-						Do(func(_ context.Context) {
+						DoAndReturn(func(_ context.Context) error {
 							t.Logf("UpdatePackages method called")
-						})
+							return nil
+						}).
+						Times(2)
 
 					client.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						Return(nil, api.ErrPackageNotFound).
+						DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+							t.Logf("CheckPackage method called")
+							return nil, api.ErrPackageNotFound
+						}).
 						Times(1)
 				},
 				Config: `
@@ -635,42 +685,51 @@ func TestAccOpkg_InstallPackagesIsFailing(t *testing.T) {
 					clientFactory.
 						EXPECT().
 						Get("http://test.lan:8080").
-						Return(client, nil).
+						DoAndReturn(func(s string) (api.Client, error) {
+							t.Logf("Get method called")
+							return client, nil
+						}).
 						AnyTimes()
 
 					client.
 						EXPECT().
 						Auth(gomock.Any(), "root", "test").
-						Return(nil).
-						Times(2).
-						Do(func(_ context.Context, username, password string) {
-							t.Logf("Auth method called with: %s, %s", username, password)
-						})
+						DoAndReturn(func(ctx context.Context, s1, s2 string) error {
+							t.Logf("Auth method called")
+							return nil
+						}).
+						Times(2)
 
 					client.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
-						Return(nil).
-						Times(2).
-						Do(func(_ context.Context) {
+						DoAndReturn(func(ctx context.Context) error {
 							t.Logf("UpdatePackages method called")
-						})
+							return nil
+						}).
+						Times(2)
 
 					client.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						Return(&api.PackageInfo{
-							Version: "",
-							Status: api.Status{
-								Installed: false,
-							},
-						}, nil).
+						DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+							t.Logf("CheckPackage method called")
+							return &api.PackageInfo{
+								Version: "",
+								Status: api.Status{
+									Installed: false,
+								},
+							}, nil
+						}).
 						Times(1)
 
 					client.
 						EXPECT().
 						InstallPackages(gomock.Any(), "curl").
-						Return(api.ErrFloatExpected).
+						DoAndReturn(func(ctx context.Context, s ...string) error {
+							t.Logf("InstallPackages method called")
+							return api.ErrFloatExpected
+						}).
 						Times(1)
 				},
 				Config: `
@@ -711,56 +770,72 @@ func TestAccOpkg_CheckPackageInUpdateIsFailing(t *testing.T) {
 					clientFactory.
 						EXPECT().
 						Get("http://test.lan:8080").
-						Return(client, nil).
+						DoAndReturn(func(s string) (api.Client, error) {
+							t.Logf("Get method called")
+							return client, nil
+						}).
 						AnyTimes()
 
 					client.
 						EXPECT().
 						Auth(gomock.Any(), "root", "test").
 						Return(nil).
-						AnyTimes().
-						Do(func(_ context.Context, username, password string) {
-							t.Logf("Auth method called with: %s, %s", username, password)
-						})
+						DoAndReturn(func(ctx context.Context, s1, s2 string) error {
+							t.Logf("Auth method called")
+							return nil
+						}).
+						AnyTimes()
 
 					client.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
-						Return(nil).
-						AnyTimes().
-						Do(func(_ context.Context) {
+						DoAndReturn(func(ctx context.Context) error {
 							t.Logf("UpdatePackages method called")
-						})
+							return nil
+						}).
+						AnyTimes()
 
 					checkPackagesNotInstalled := client.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						Return(&api.PackageInfo{
-							Version: "",
-							Status: api.Status{
-								Installed: false,
-							},
-						}, nil).
+						DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+							t.Logf("CheckPackage method called")
+							return &api.PackageInfo{
+								Version: "",
+								Status: api.Status{
+									Installed: false,
+								},
+							}, nil
+						}).
 						Times(1)
 
 					client.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						Return(nil, api.ErrPackageNotFound).
+						DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+							t.Logf("CheckPackage method called")
+							return nil, api.ErrPackageNotFound
+						}).
 						AnyTimes().
 						After(checkPackagesNotInstalled)
 
 					client.
 						EXPECT().
 						InstallPackages(gomock.Any(), "curl").
-						Return(nil).
+						DoAndReturn(func(ctx context.Context, s ...string) error {
+							t.Logf("InstallPackages method called")
+							return nil
+						}).
 						Times(1)
 
 					//Teardown resource
 					client.
 						EXPECT().
 						RemovePackages(gomock.Any(), "curl").
-						Return(nil).
+						DoAndReturn(func(ctx context.Context, s ...string) error {
+							t.Logf("InstallPackages method called")
+							return nil
+						}).
 						Times(1)
 				},
 				Config: `
