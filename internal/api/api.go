@@ -89,6 +89,10 @@ func newClient(url string) (Client, error) {
 }
 
 func (c *client) Auth(ctx context.Context, username, password string) error {
+	tflog.Debug(ctx, "authentication", map[string]interface{}{
+		"url":      c.url,
+		"username": username,
+	})
 	innerCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	b, err := json.Marshal(&struct {
@@ -133,6 +137,11 @@ func (c *client) Auth(ctx context.Context, username, password string) error {
 	if data.Result == "" {
 		return ErrEmptyResult
 	}
+
+	tflog.Debug(ctx, "authentication performed", map[string]interface{}{
+		"url":      c.url,
+		"usernema": username,
+	})
 
 	c.uci = &uci{
 		token:  &data.Result,
