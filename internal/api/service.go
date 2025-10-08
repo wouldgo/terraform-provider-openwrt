@@ -77,7 +77,7 @@ func (s *service) DisableService(ctx context.Context, serviceName string) error 
 	}
 
 	if !data {
-		return errors.Join(ErrExecutionFailure)
+		return ErrExecutionFailure
 	}
 	return nil
 }
@@ -96,7 +96,7 @@ func (s *service) EnableService(ctx context.Context, serviceName string) error {
 	}
 
 	if !data {
-		return errors.Join(ErrExecutionFailure)
+		return ErrExecutionFailure
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ func (s *service) StartService(ctx context.Context, serviceName string) error {
 		return errors.Join(ErrUnMarshal, err)
 	}
 	if !data {
-		return errors.Join(ErrExecutionFailure)
+		return ErrExecutionFailure
 	}
 	return nil
 }
@@ -132,7 +132,7 @@ func (s *service) StopSevice(ctx context.Context, serviceName string) error {
 		return errors.Join(ErrUnMarshal, err)
 	}
 	if !data {
-		return errors.Join(ErrExecutionFailure)
+		return ErrExecutionFailure
 	}
 	return nil
 }
