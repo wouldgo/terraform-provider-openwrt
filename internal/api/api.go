@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type ClientFactory interface {
@@ -22,26 +24,12 @@ type ClientFactory interface {
 }
 
 type Client interface {
+	SystemFacade
+	FsFacade
+	OpkgFacade
+	InitFacade
+
 	Auth(ctx context.Context, username, password string) error
-
-	//UCI
-	GetAll(ctx context.Context, section ...any) ([]System, error)
-	GetSystem(ctx context.Context) (*System, error)
-	TSet(ctx context.Context, data any, section ...any) error
-	Add(ctx context.Context, section ...any) (string, error)
-	Delete(ctx context.Context, section ...any) error
-	CommitOrRevert(ctx context.Context, section ...any) error
-
-	//FS
-	Writefile(ctx context.Context, path string, data []byte) error
-	ReadFile(ctx context.Context, path string) ([]byte, error)
-	RemoveFile(ctx context.Context, path string) error
-
-	//OPKG
-	UpdatePackages(ctx context.Context) error
-	CheckPackage(ctx context.Context, pack string) (*PackageInfo, error)
-	InstallPackages(ctx context.Context, packages ...string) error
-	RemovePackages(ctx context.Context, packages ...string) error
 }
 
 var (
@@ -58,11 +46,11 @@ var (
 	ErrEmptyResult          = fmt.Errorf("empty reply as result")
 	ErrRpcCommand           = fmt.Errorf("missing rpc command")
 	ErrRpcMethod            = fmt.Errorf("missing rpc method")
-	ErrRpcExecution         = fmt.Errorf("rpc exection error")
+	ErrRpcExecution         = fmt.Errorf("rpc execution error")
 
-	ErrFloatExpected   = fmt.Errorf("value not a float64 type")
-	ErrNonZeroRet      = fmt.Errorf("execution returned value different than zero")
-	ErrPackageNotFound = fmt.Errorf("package not found")
+	ErrFloatExpected    = fmt.Errorf("value not a float64 type")
+	ErrExecutionFailure = fmt.Errorf("execution returned value a failing result")
+	ErrPackageNotFound  = fmt.Errorf("package not found")
 
 	ErrPackagesNotSpecified = fmt.Errorf("no packages specified")
 )
@@ -82,6 +70,7 @@ type client struct {
 	*uci
 	*fs
 	*opkg
+	*service
 	url    string
 	client *http.Client
 }
@@ -100,6 +89,10 @@ func newClient(url string) (Client, error) {
 }
 
 func (c *client) Auth(ctx context.Context, username, password string) error {
+	tflog.Debug(ctx, "authentication", map[string]interface{}{
+		"url":      c.url,
+		"username": username,
+	})
 	innerCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	b, err := json.Marshal(&struct {
@@ -145,6 +138,11 @@ func (c *client) Auth(ctx context.Context, username, password string) error {
 		return ErrEmptyResult
 	}
 
+	tflog.Debug(ctx, "authentication performed", map[string]interface{}{
+		"url":      c.url,
+		"usernema": username,
+	})
+
 	c.uci = &uci{
 		token:  &data.Result,
 		url:    &c.url,
@@ -156,6 +154,11 @@ func (c *client) Auth(ctx context.Context, username, password string) error {
 		client: c.client,
 	}
 	c.opkg = &opkg{
+		token:  &data.Result,
+		url:    &c.url,
+		client: c.client,
+	}
+	c.service = &service{
 		token:  &data.Result,
 		url:    &c.url,
 		client: c.client,
@@ -212,22 +215,41 @@ func call(
 	q.Add("auth", token)
 	u.RawQuery = q.Encode()
 
-	b, err := json.Marshal(&jsonRPCRequestBody{
+	requestBody, err := json.Marshal(&jsonRPCRequestBody{
 		Method: method,
 		Params: params,
 	})
 	if err != nil {
 		return nil, errors.Join(ErrMarshal, err)
 	}
-	req, err := http.NewRequestWithContext(innerCtx, http.MethodPost, u.String(), bytes.NewBuffer(b))
+	req, err := http.NewRequestWithContext(innerCtx, http.MethodPost, u.String(), bytes.NewBuffer(requestBody))
 	if err != nil {
 		return nil, errors.Join(ErrHttpRequestCreation, err)
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	fmt.Printf("%s - %s: %s", req.Method, req.URL, string(b))
+	tflog.Debug(ctx, "start - request call to remote", map[string]interface{}{
+		"host":    req.URL.Host,
+		"path":    req.URL.Path,
+		"method":  req.Method,
+		"request": string(requestBody),
+	})
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, errors.Join(ErrHttpRequestExecution, err)
+	}
+
+	tflog.Debug(ctx, "end - request call to remote", map[string]interface{}{
+		"host":    req.URL.Host,
+		"path":    req.URL.Path,
+		"method":  req.Method,
+		"request": string(requestBody),
+		"response": map[string]interface{}{
+			"statusCode": resp.StatusCode,
+		},
+	})
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Join(ErrHttpRequestExecution, fmt.Errorf("request %+v replied with %d", req, resp.StatusCode))
 	}
 	var responseBody jsonRPCResponseBody
 	decoder := json.NewDecoder(resp.Body)

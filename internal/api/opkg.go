@@ -11,6 +11,15 @@ import (
 	"net/http"
 )
 
+type OpkgFacade interface {
+	UpdatePackages(ctx context.Context) error
+	CheckPackage(ctx context.Context, pack string) (*PackageInfo, error)
+	InstallPackages(ctx context.Context, packages ...string) error
+	RemovePackages(ctx context.Context, packages ...string) error
+}
+
+var _ OpkgFacade = (*opkg)(nil)
+
 type opkg struct {
 	token  *string
 	url    *string
@@ -48,7 +57,7 @@ func (c *opkg) UpdatePackages(ctx context.Context) error {
 	}
 
 	if retCasted != 0 {
-		return errors.Join(ErrNonZeroRet, fmt.Errorf("update packages returns %.0f", retCasted))
+		return errors.Join(ErrExecutionFailure, fmt.Errorf("update packages returns %.0f", retCasted))
 	}
 	return nil
 }
@@ -109,7 +118,7 @@ func (c *opkg) InstallPackages(ctx context.Context, packages ...string) error {
 	}
 
 	if retCasted != 0 {
-		return errors.Join(ErrNonZeroRet, fmt.Errorf("install packages returns %.0f", retCasted))
+		return errors.Join(ErrExecutionFailure, fmt.Errorf("install packages returns %.0f", retCasted))
 	}
 	return nil
 }
@@ -141,7 +150,7 @@ func (c *opkg) RemovePackages(ctx context.Context, packages ...string) error {
 	}
 
 	if retCasted != 0 {
-		return errors.Join(ErrNonZeroRet, fmt.Errorf("remove packages returns %.0f", retCasted))
+		return errors.Join(ErrExecutionFailure, fmt.Errorf("remove packages returns %.0f", retCasted))
 	}
 	return nil
 }

@@ -32,7 +32,7 @@ build: generate
 	go build -v
 
 test:
-	go test -parallel=10 -timeout 120s -cover -coverprofile=_out/.coverage -v $(PACKAGES);
+	go test -tags=test -race -parallel=10 -timeout 120s -cover -coverprofile=_out/.coverage -v $(PACKAGES);
 	go tool cover -html=_out/.coverage -o=./_out/coverage.html
 
 snapshot:

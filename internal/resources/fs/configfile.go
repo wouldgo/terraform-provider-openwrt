@@ -18,28 +18,28 @@ import (
 
 var etcConfig = "/etc/config"
 
-type ConfigFileModel struct {
+type configFileModel struct {
 	Name    types.String `tfsdk:"name"`
 	Content types.String `tfsdk:"content"`
 	Commit  types.Bool   `tfsdk:"commit"`
 }
 
-// ConfigFileResource represent Incus project resource.
-type ConfigFileResource struct {
+// configFileResource represent Incus project resource.
+type configFileResource struct {
 	provider api.Client
 }
 
 // NewProjectResource return new project resource.
 func NewConfigFileResource() resource.Resource {
-	return &ConfigFileResource{}
+	return &configFileResource{}
 }
 
 // Metadata for project resource.
-func (c ConfigFileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (c configFileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = fmt.Sprintf("%s_configfile", req.ProviderTypeName)
 }
 
-func (c ConfigFileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (c configFileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Write configuration files to `/etc/config` on the OpenWRT router.",
 		Description:         "Write configuration files to /etc/config on the OpenWRT router.",
@@ -65,7 +65,7 @@ func (c ConfigFileResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 	}
 }
 
-func (c *ConfigFileResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (c *configFileResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	data := req.ProviderData
 	if data == nil {
 		return
@@ -78,8 +78,8 @@ func (c *ConfigFileResource) Configure(_ context.Context, req resource.Configure
 	c.provider = provider
 }
 
-func (c ConfigFileResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan ConfigFileModel
+func (c configFileResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan configFileModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -103,8 +103,8 @@ func (c ConfigFileResource) Create(ctx context.Context, req resource.CreateReque
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
-func (c ConfigFileResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state ConfigFileModel
+func (c configFileResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state configFileModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -126,8 +126,8 @@ func (c ConfigFileResource) Read(ctx context.Context, req resource.ReadRequest, 
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
-func (c ConfigFileResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan ConfigFileModel
+func (c configFileResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan configFileModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -150,8 +150,8 @@ func (c ConfigFileResource) Update(ctx context.Context, req resource.UpdateReque
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func (c ConfigFileResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state ConfigFileModel
+func (c configFileResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state configFileModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -173,8 +173,8 @@ func (c ConfigFileResource) Delete(ctx context.Context, req resource.DeleteReque
 	}
 }
 
-func (c *ConfigFileResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	var state ConfigFileModel
+func (c *configFileResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	var state configFileModel
 
 	path := path.Join(etcConfig, req.ID)
 	b, err := c.provider.ReadFile(ctx, path)
