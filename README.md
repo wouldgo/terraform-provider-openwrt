@@ -6,7 +6,8 @@ openwrt provider for Terraform.
 ## Prerequisites
 
 - [Terraform](http://terraform.io)
-- [OpenWrt](https://openwrt.org)
+- [An OpenWRT Router](https://openwrt.org)
+- `luasocket` `luci-mod-rpc` `luci-lib-ipkg` and `luci-compat` packages installed in the openwrt router
 
 ## Installation
 
@@ -35,7 +36,6 @@ Full documentation can be found in the [`docs`](docs) directory.
 #### Prerequisites
 
 - [Golang](https://golang.org/doc/install)
-- [An OpenWRT Router](https://openwrt.org)
 - [Make](https://www.gnu.org/software/make/)
 - [Golangci-lint](https://golangci-lint.run/)
 - [GoReleaser](https://goreleaser.com/)
