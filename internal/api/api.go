@@ -16,25 +16,85 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type ClientFactory interface {
-	Get(url string) (Client, error)
+	ParseTimeouts(ctx context.Context, timeouts *TimeoutsModel) (Timeouts, error)
+	Get(ctx context.Context, url string, timeouts Timeouts) (Client, error)
+}
+
+type Timeouts interface {
+	FsTimeouts
+	OpkgTimeouts
+	ServiceTimeouts
+	SystemTimeouts
+
+	Auth() time.Duration
 }
 
 type Client interface {
-	SystemFacade
 	FsFacade
 	OpkgFacade
-	InitFacade
+	ServiceFacade
+	SystemFacade
 
 	Auth(ctx context.Context, username, password string) error
 }
 
+type WithSession interface {
+	SetToken(ctx context.Context, token string) error
+}
+
+type TimeoutsModel struct {
+	Auth types.String `tfsdk:"auth"`
+
+	Fs      *FsTimeoutsModel      `tfsdk:"fs"`
+	Opkg    *OpkgTimeoutsModel    `tfsdk:"opkg"`
+	Service *ServiceTimeoutsModel `tfsdk:"service"`
+	System  *SystemTimeoutsModel  `tfsdk:"uci"`
+}
+
+type timeouts struct {
+	FsTimeouts
+	OpkgTimeouts
+	ServiceTimeouts
+	SystemTimeouts
+
+	authTimeout time.Duration
+}
+
+func (t *timeouts) Auth() time.Duration {
+	return t.authTimeout
+}
+
+const defaultAuthTimeout = 5 * time.Second
+
 var (
 	_ ClientFactory = (*clientFactory)(nil)
 	_ Client        = (*client)(nil)
+	_ Timeouts      = (*timeouts)(nil)
+
+	TimeoutSchemaAttribute = schema.SingleNestedAttribute{
+		MarkdownDescription: `Timeout configuration for the specific RPC calls.
+
+The main purpose of this optional configuration is to fine tune the default timeout (30 seconds) for longer API interaction (e.g. update packages, list packages, ...)`,
+		Description: "Timeout configuration for the specific RPC calls",
+		Optional:    true,
+		Attributes: map[string]schema.Attribute{
+			"auth": schema.StringAttribute{
+				MarkdownDescription: `Auth operation timeout configuration`,
+				Description:         `Auth operation timeout configuration`,
+				Optional:            true,
+			},
+			"fs":      fsTimeoutSchemaAttribute,
+			"opkg":    opkgTimeoutSchemaAttribute,
+			"service": serviceTimeoutSchemaAttribute,
+			"uci":     uciTimeoutSchemaAttribute,
+		},
+	}
 
 	ErrMissingUrl           = fmt.Errorf("missing remote url")
 	ErrParsing              = fmt.Errorf("parsing error")
@@ -62,27 +122,108 @@ func NewClientFactory() (ClientFactory, error) {
 	return &clientFactory{}, nil
 }
 
-func (cf *clientFactory) Get(url string) (Client, error) {
-	return newClient(url)
+func (cf *clientFactory) ParseTimeouts(ctx context.Context, t *TimeoutsModel) (Timeouts, error) {
+	authTimeout := defaultAuthTimeout
+	if t != nil && !t.Auth.IsNull() {
+		parsedAuthTimeout, err := time.ParseDuration(t.Auth.ValueString())
+		if err != nil {
+			return nil, err
+		}
+
+		authTimeout = parsedAuthTimeout
+		tflog.Debug(ctx, "parse timeout configuration: auth config parsed")
+	} else {
+		tflog.Debug(ctx, "parse timeout configuration: default auth config")
+	}
+
+	fs, err := parseFsTimeouts(ctx, t)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing fs timeouts: %w", err)
+	}
+
+	opkg, err := parseOpkgTimeouts(ctx, t)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing opkg timeouts: %w", err)
+	}
+
+	service, err := parseServiceTimeouts(ctx, t)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing service timeouts: %w", err)
+	}
+
+	system, err := parseSystemTimeouts(ctx, t)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing system timeouts: %w", err)
+	}
+
+	return &timeouts{
+		fs,
+		opkg,
+		service,
+		system,
+		authTimeout,
+	}, nil
+}
+
+func (cf *clientFactory) Get(ctx context.Context, url string, t Timeouts) (Client, error) {
+	return newClient(url, t)
 }
 
 type client struct {
-	*uci
-	*fs
-	*opkg
-	*service
-	url    string
-	client *http.Client
+	FsFacade
+	OpkgFacade
+	ServiceFacade
+	SystemFacade
+
+	needToken []WithSession
+
+	url      *string
+	client   *http.Client
+	timeouts Timeouts
 }
 
-func newClient(url string) (Client, error) {
+func newClient(url string, t Timeouts) (Client, error) {
 	if url == "" {
 		return nil, ErrMissingUrl
 	}
+	httpClient := &http.Client{}
+	remoteUrl := &url
+
+	fs := &fs{
+		timeouts: t,
+		url:      remoteUrl,
+		client:   httpClient,
+	}
+
+	opkg := &opkg{
+		timeouts: t,
+		url:      remoteUrl,
+		client:   httpClient,
+	}
+
+	service := &service{
+		timeouts: t,
+		url:      remoteUrl,
+		client:   httpClient,
+	}
+
+	system := &system{
+		timeouts: t,
+		url:      remoteUrl,
+		client:   httpClient,
+	}
 
 	client := &client{
-		url:    url,
-		client: &http.Client{},
+		FsFacade:      fs,
+		OpkgFacade:    opkg,
+		ServiceFacade: service,
+		SystemFacade:  system,
+		needToken: []WithSession{
+			fs, opkg, service, system,
+		},
+		timeouts: t,
+		url:      remoteUrl,
+		client:   httpClient,
 	}
 
 	return client, nil
@@ -93,7 +234,7 @@ func (c *client) Auth(ctx context.Context, username, password string) error {
 		"url":      c.url,
 		"username": username,
 	})
-	innerCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	innerCtx, cancel := context.WithTimeout(ctx, c.timeouts.Auth())
 	defer cancel()
 	b, err := json.Marshal(&struct {
 		Id     int      `json:"id"`
@@ -107,7 +248,7 @@ func (c *client) Auth(ctx context.Context, username, password string) error {
 	if err != nil {
 		return errors.Join(ErrMarshal, err)
 	}
-	u, err := url.JoinPath(c.url, "cgi-bin/luci/rpc/auth")
+	u, err := url.JoinPath(*c.url, "cgi-bin/luci/rpc/auth")
 	if err != nil {
 		return errors.Join(ErrParsing, err)
 	}
@@ -143,25 +284,12 @@ func (c *client) Auth(ctx context.Context, username, password string) error {
 		"usernema": username,
 	})
 
-	c.uci = &uci{
-		token:  &data.Result,
-		url:    &c.url,
-		client: c.client,
-	}
-	c.fs = &fs{
-		token:  &data.Result,
-		url:    &c.url,
-		client: c.client,
-	}
-	c.opkg = &opkg{
-		token:  &data.Result,
-		url:    &c.url,
-		client: c.client,
-	}
-	c.service = &service{
-		token:  &data.Result,
-		url:    &c.url,
-		client: c.client,
+	token := data.Result
+	for _, v := range c.needToken {
+		err = v.SetToken(ctx, token)
+		if err != nil {
+			return fmt.Errorf("error on setting token for fs: %w", err)
+		}
 	}
 
 	return nil
@@ -189,10 +317,10 @@ type jsonRPCResponseBody struct {
 }
 
 func call(
-	ctx context.Context, client *http.Client,
+	ctx context.Context, client *http.Client, timeout time.Duration,
 	remoteUrl, token, rpc, method string, params []any,
 ) (json.RawMessage, error) {
-	innerCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	innerCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	if remoteUrl == "" {
 		return nil, ErrMissingUrl

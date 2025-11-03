@@ -48,6 +48,66 @@ EOT
 
 ### Optional
 
+- `api_timeouts` (Attributes) Timeout configuration for the specific RPC calls.
+
+The main purpose of this optional configuration is to fine tune the default timeout (30 seconds) for longer API interaction (e.g. update packages, list packages, ...) (see [below for nested schema](#nestedatt--api_timeouts))
 - `password` (String) The URL of the JSON RPC API. Optionally OPENWRT_PASSWORD env variable can be set and used to specify the password. One between this attribute or the env variable must be set
 - `remote` (String) The username of the admin account. Optionally OPENWRT_REMOTE env variable can be set and used to specify the remote url. One between this attribute or the env variable must be set
 - `user` (String) The password of the account. Optionally OPENWRT_USER env variable can be set and used to specify the user. One between this attribute or the env variable must be set
+
+<a id="nestedatt--api_timeouts"></a>
+### Nested Schema for `api_timeouts`
+
+Optional:
+
+- `auth` (String) Auth operation timeout configuration
+- `fs` (Attributes) Filesystem operations timeout configuration (see [below for nested schema](#nestedatt--api_timeouts--fs))
+- `opkg` (Attributes) Opkg operations timeout configuration (see [below for nested schema](#nestedatt--api_timeouts--opkg))
+- `service` (Attributes) Service operations timeout configuration (see [below for nested schema](#nestedatt--api_timeouts--service))
+- `uci` (Attributes) Uci operations timeout configuration (see [below for nested schema](#nestedatt--api_timeouts--uci))
+
+<a id="nestedatt--api_timeouts--fs"></a>
+### Nested Schema for `api_timeouts.fs`
+
+Optional:
+
+- `read_file` (String) Read file filesystem operation timeout configuration
+- `remove_file` (String) Remove file filesystem operation timeout configuration
+- `write_file` (String) Write file filesystem operation timeout configuration
+
+
+<a id="nestedatt--api_timeouts--opkg"></a>
+### Nested Schema for `api_timeouts.opkg`
+
+Optional:
+
+- `check_package` (String) Check package operation timeout configuration
+- `install_packages` (String) Install packages operation timeout configuration
+- `remove_packages` (String) Remove packages operation timeout configuration
+- `update_packages` (String) Update packages operation timeout configuration
+
+
+<a id="nestedatt--api_timeouts--service"></a>
+### Nested Schema for `api_timeouts.service`
+
+Optional:
+
+- `disable_service` (String) Disable service operation timeout configuration
+- `enable_service` (String) Enable service operation timeout configuration
+- `is_enabled` (String) Is enabled service operation timeout configuration
+- `list_services` (String) List services operation timeout configuration
+- `restart_service` (String) Restart service operation timeout configuration
+- `start_service` (String) Start service operation timeout configuration
+- `stop_sevice` (String) Stop service operation timeout configuration
+
+
+<a id="nestedatt--api_timeouts--uci"></a>
+### Nested Schema for `api_timeouts.uci`
+
+Optional:
+
+- `add` (String) Add uci operation timeout configuration
+- `commit_or_revert` (String) Commit or revert operation timeout configuration
+- `delete` (String) Delete uci operation timeout configuration
+- `get_all` (String) Get all uci operation timeout configuration
+- `t_set` (String) T set uci operation timeout configuration

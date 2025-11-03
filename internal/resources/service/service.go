@@ -20,7 +20,7 @@ type serviceModel struct {
 }
 
 type serviceResource struct {
-	initFacade api.InitFacade
+	initFacade api.ServiceFacade
 }
 
 func NewServiceResource() resource.Resource {
@@ -62,7 +62,7 @@ func (s *serviceResource) Configure(_ context.Context, req resource.ConfigureReq
 	if data == nil {
 		return
 	}
-	initFacade, ok := data.(api.InitFacade)
+	initFacade, ok := data.(api.ServiceFacade)
 	if !ok {
 		resp.Diagnostics.AddError("failed to get init facace", "")
 		return
