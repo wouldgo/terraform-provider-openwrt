@@ -78,15 +78,13 @@ var (
 	_ Timeouts      = (*timeouts)(nil)
 
 	TimeoutSchemaAttribute = schema.SingleNestedAttribute{
-		MarkdownDescription: `Timeout configuration for the specific RPC calls.
-
-The main purpose of this optional configuration is to fine tune the default timeout (30 seconds) for longer API interaction (e.g. update packages, list packages, ...)`,
-		Description: "Timeout configuration for the specific RPC calls",
-		Optional:    true,
+		MarkdownDescription: "Timeout configuration for the specific RPC calls. The main purpose of this optional configuration is to fine tune the default timeouts for longer API interaction (e.g. update packages, list packages, ...)",
+		Description:         "Timeout configuration for the specific RPC calls",
+		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"auth": schema.StringAttribute{
-				MarkdownDescription: `Auth operation timeout configuration`,
-				Description:         `Auth operation timeout configuration`,
+				MarkdownDescription: `Authentication RPC timeout value`,
+				Description:         `Authentication RPC timeout value`,
 				Optional:            true,
 			},
 			"fs":      fsTimeoutSchemaAttribute,

@@ -20,6 +20,9 @@ provider "openwrt" {
   user     = "root"
   password = "admin"
   remote   = "http://192.168.8.1:8080"
+  api_timeouts = {
+    auth = "20s"
+  }
 }
 
 resource "openwrt_opkg" "wanted_packages" {
@@ -48,9 +51,7 @@ EOT
 
 ### Optional
 
-- `api_timeouts` (Attributes) Timeout configuration for the specific RPC calls.
-
-The main purpose of this optional configuration is to fine tune the default timeout (30 seconds) for longer API interaction (e.g. update packages, list packages, ...) (see [below for nested schema](#nestedatt--api_timeouts))
+- `api_timeouts` (Attributes) Timeout configuration for the specific RPC calls. The main purpose of this optional configuration is to fine tune the default timeouts for longer API interaction (e.g. update packages, list packages, ...) (see [below for nested schema](#nestedatt--api_timeouts))
 - `password` (String) The URL of the JSON RPC API. Optionally OPENWRT_PASSWORD env variable can be set and used to specify the password. One between this attribute or the env variable must be set
 - `remote` (String) The username of the admin account. Optionally OPENWRT_REMOTE env variable can be set and used to specify the remote url. One between this attribute or the env variable must be set
 - `user` (String) The password of the account. Optionally OPENWRT_USER env variable can be set and used to specify the user. One between this attribute or the env variable must be set
@@ -60,7 +61,7 @@ The main purpose of this optional configuration is to fine tune the default time
 
 Optional:
 
-- `auth` (String) Auth operation timeout configuration
+- `auth` (String) Authentication RPC timeout value
 - `fs` (Attributes) Filesystem operations timeout configuration (see [below for nested schema](#nestedatt--api_timeouts--fs))
 - `opkg` (Attributes) Opkg operations timeout configuration (see [below for nested schema](#nestedatt--api_timeouts--opkg))
 - `service` (Attributes) Service operations timeout configuration (see [below for nested schema](#nestedatt--api_timeouts--service))
@@ -71,9 +72,9 @@ Optional:
 
 Optional:
 
-- `read_file` (String) Read file filesystem operation timeout configuration
-- `remove_file` (String) Remove file filesystem operation timeout configuration
-- `write_file` (String) Write file filesystem operation timeout configuration
+- `read_file` (String) Read file RPC timeout value
+- `remove_file` (String) Remove file RPC timeout value
+- `write_file` (String) Write file RPC timeout value
 
 
 <a id="nestedatt--api_timeouts--opkg"></a>
@@ -81,10 +82,10 @@ Optional:
 
 Optional:
 
-- `check_package` (String) Check package operation timeout configuration
-- `install_packages` (String) Install packages operation timeout configuration
-- `remove_packages` (String) Remove packages operation timeout configuration
-- `update_packages` (String) Update packages operation timeout configuration
+- `check_package` (String) Check package RPC timeout value
+- `install_packages` (String) Install packages RPC timeout value
+- `remove_packages` (String) Remove packages RPC timeout value
+- `update_packages` (String) Update packages RPC timeout value
 
 
 <a id="nestedatt--api_timeouts--service"></a>
@@ -92,13 +93,13 @@ Optional:
 
 Optional:
 
-- `disable_service` (String) Disable service operation timeout configuration
-- `enable_service` (String) Enable service operation timeout configuration
-- `is_enabled` (String) Is enabled service operation timeout configuration
-- `list_services` (String) List services operation timeout configuration
-- `restart_service` (String) Restart service operation timeout configuration
-- `start_service` (String) Start service operation timeout configuration
-- `stop_sevice` (String) Stop service operation timeout configuration
+- `disable_service` (String) Disable service RPC timeout value
+- `enable_service` (String) Enable service RPC timeout value
+- `is_enabled` (String) Is enabled service RPC timeout value
+- `list_services` (String) List services RPC timeout value
+- `restart_service` (String) Restart service RPC timeout value
+- `start_service` (String) Start service RPC timeout value
+- `stop_sevice` (String) Stop service RPC timeout value
 
 
 <a id="nestedatt--api_timeouts--uci"></a>
@@ -106,8 +107,8 @@ Optional:
 
 Optional:
 
-- `add` (String) Add uci operation timeout configuration
+- `add` (String) Add RPC timeout value
 - `commit_or_revert` (String) Commit or revert operation timeout configuration
-- `delete` (String) Delete uci operation timeout configuration
-- `get_all` (String) Get all uci operation timeout configuration
-- `t_set` (String) T set uci operation timeout configuration
+- `delete` (String) Delete RPC timeout value
+- `get_all` (String) Get all RPC timeout value
+- `t_set` (String) T set RPC timeout value

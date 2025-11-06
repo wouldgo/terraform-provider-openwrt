@@ -66,18 +66,18 @@ var (
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"write_file": schema.StringAttribute{
-				MarkdownDescription: `Write file filesystem operation timeout configuration`,
-				Description:         `Write file filesystem operation timeout configuration`,
+				MarkdownDescription: `Write file RPC timeout value`,
+				Description:         `Write file RPC timeout value`,
 				Optional:            true,
 			},
 			"read_file": schema.StringAttribute{
-				MarkdownDescription: `Read file filesystem operation timeout configuration`,
-				Description:         `Read file filesystem operation timeout configuration`,
+				MarkdownDescription: `Read file RPC timeout value`,
+				Description:         `Read file RPC timeout value`,
 				Optional:            true,
 			},
 			"remove_file": schema.StringAttribute{
-				MarkdownDescription: `Remove file filesystem operation timeout configuration`,
-				Description:         `Remove file filesystem operation timeout configuration`,
+				MarkdownDescription: `Remove file RPC timeout value`,
+				Description:         `Remove file RPC timeout value`,
 				Optional:            true,
 			},
 		},

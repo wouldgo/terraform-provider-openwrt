@@ -90,23 +90,23 @@ var (
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"get_all": schema.StringAttribute{
-				MarkdownDescription: `Get all uci operation timeout configuration`,
-				Description:         `Get all uci operation timeout configuration`,
+				MarkdownDescription: `Get all RPC timeout value`,
+				Description:         `Get all RPC timeout value`,
 				Optional:            true,
 			},
 			"t_set": schema.StringAttribute{
-				MarkdownDescription: `T set uci operation timeout configuration`,
-				Description:         `T set uci operation timeout configuration`,
+				MarkdownDescription: `T set RPC timeout value`,
+				Description:         `T set RPC timeout value`,
 				Optional:            true,
 			},
 			"add": schema.StringAttribute{
-				MarkdownDescription: `Add uci operation timeout configuration`,
-				Description:         `Add uci operation timeout configuration`,
+				MarkdownDescription: `Add RPC timeout value`,
+				Description:         `Add RPC timeout value`,
 				Optional:            true,
 			},
 			"delete": schema.StringAttribute{
-				MarkdownDescription: `Delete uci operation timeout configuration`,
-				Description:         `Delete uci operation timeout configuration`,
+				MarkdownDescription: `Delete RPC timeout value`,
+				Description:         `Delete RPC timeout value`,
 				Optional:            true,
 			},
 			"commit_or_revert": schema.StringAttribute{

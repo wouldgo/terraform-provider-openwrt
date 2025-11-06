@@ -2,6 +2,9 @@ provider "openwrt" {
   user     = "root"
   password = "admin"
   remote   = "http://192.168.8.1:8080"
+  api_timeouts = {
+    auth = "20s"
+  }
 }
 
 resource "openwrt_opkg" "wanted_packages" {

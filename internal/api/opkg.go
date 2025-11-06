@@ -78,23 +78,23 @@ var (
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"update_packages": schema.StringAttribute{
-				MarkdownDescription: `Update packages operation timeout configuration`,
-				Description:         `Update packages operation timeout configuration`,
+				MarkdownDescription: `Update packages RPC timeout value`,
+				Description:         `Update packages RPC timeout value`,
 				Optional:            true,
 			},
 			"check_package": schema.StringAttribute{
-				MarkdownDescription: `Check package operation timeout configuration`,
-				Description:         `Check package operation timeout configuration`,
+				MarkdownDescription: `Check package RPC timeout value`,
+				Description:         `Check package RPC timeout value`,
 				Optional:            true,
 			},
 			"install_packages": schema.StringAttribute{
-				MarkdownDescription: `Install packages operation timeout configuration`,
-				Description:         `Install packages operation timeout configuration`,
+				MarkdownDescription: `Install packages RPC timeout value`,
+				Description:         `Install packages RPC timeout value`,
 				Optional:            true,
 			},
 			"remove_packages": schema.StringAttribute{
-				MarkdownDescription: `Remove packages operation timeout configuration`,
-				Description:         `Remove packages operation timeout configuration`,
+				MarkdownDescription: `Remove packages RPC timeout value`,
+				Description:         `Remove packages RPC timeout value`,
 				Optional:            true,
 			},
 		},
