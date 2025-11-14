@@ -261,6 +261,12 @@ func (c *client) Auth(ctx context.Context, username, password string) error {
 		return errors.Join(ErrHttpRequestExecution, err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return errors.Join(ErrHttpRequestExecution, fmt.Errorf("authentication request %+v replied with %d", req, resp.StatusCode))
+	}
+
+	defer resp.Body.Close() //nolint:errcheck
+
 	var data struct {
 		Result string `json:"result"`
 		Error  string `json:"error"`
@@ -377,10 +383,10 @@ func call(
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Join(ErrHttpRequestExecution, fmt.Errorf("request %+v replied with %d", req, resp.StatusCode))
 	}
-	var responseBody jsonRPCResponseBody
-	decoder := json.NewDecoder(resp.Body)
 	defer resp.Body.Close() //nolint:errcheck
-	if err = decoder.Decode(&responseBody); err != nil {
+
+	var responseBody jsonRPCResponseBody
+	if err = json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
 		return nil, errors.Join(ErrUnMarshal, err)
 	}
 	if responseBody.Error != nil {
