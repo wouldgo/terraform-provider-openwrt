@@ -30,6 +30,7 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
+	timeouts := mocks.NewMockTimeouts(ctrl)
 	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
@@ -62,8 +63,16 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 
 					clientFactory.
 						EXPECT().
-						Get("http://test.lan:8080").
-						DoAndReturn(func(_ string) (api.Client, error) {
+						ParseTimeouts(gomock.Any(), gomock.Any()).
+						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+							return timeouts, nil
+						}).
+						AnyTimes()
+
+					clientFactory.
+						EXPECT().
+						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 							t.Logf("Get method called")
 							return client, nil
 						}).
@@ -163,6 +172,7 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
+	timeouts := mocks.NewMockTimeouts(ctrl)
 	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
@@ -195,8 +205,16 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 
 					clientFactory.
 						EXPECT().
-						Get("http://test.lan:8080").
-						DoAndReturn(func(s string) (api.Client, error) {
+						ParseTimeouts(gomock.Any(), gomock.Any()).
+						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+							return timeouts, nil
+						}).
+						AnyTimes()
+
+					clientFactory.
+						EXPECT().
+						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 							t.Logf("Get method called")
 							return client, nil
 						}).
@@ -272,6 +290,7 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
+	timeouts := mocks.NewMockTimeouts(ctrl)
 	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
@@ -300,9 +319,17 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 
 			clientFactory.
 				EXPECT().
-				Get("http://test.lan:8080").
-				DoAndReturn(func(remote string) (api.Client, error) {
-					t.Logf("Get method called with: %s", remote)
+				ParseTimeouts(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+					return timeouts, nil
+				}).
+				AnyTimes()
+
+			clientFactory.
+				EXPECT().
+				Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
+					t.Logf("Get method called")
 					return client, nil
 				}).
 				AnyTimes()
@@ -482,6 +509,7 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
+	timeouts := mocks.NewMockTimeouts(ctrl)
 	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
@@ -494,8 +522,16 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 				PreConfig: func() {
 					clientFactory.
 						EXPECT().
-						Get("http://test.lan:8080").
-						DoAndReturn(func(s string) (api.Client, error) {
+						ParseTimeouts(gomock.Any(), gomock.Any()).
+						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+							return timeouts, nil
+						}).
+						AnyTimes()
+
+					clientFactory.
+						EXPECT().
+						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 							t.Logf("Get method called")
 							return nil, api.ErrMissingUrl
 						}).
@@ -518,8 +554,15 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 					client := mocks.NewMockClient(ctrl)
 					clientFactory.
 						EXPECT().
-						Get("http://test.lan:8080").
-						DoAndReturn(func(s string) (api.Client, error) {
+						ParseTimeouts(gomock.Any(), gomock.Any()).
+						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+							return timeouts, nil
+						}).
+						AnyTimes()
+					clientFactory.
+						EXPECT().
+						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 							t.Logf("Get method called")
 							return client, nil
 						}).
@@ -551,8 +594,15 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 					client := mocks.NewMockClient(ctrl)
 					clientFactory.
 						EXPECT().
-						Get("http://test.lan:8080").
-						DoAndReturn(func(s string) (api.Client, error) {
+						ParseTimeouts(gomock.Any(), gomock.Any()).
+						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+							return timeouts, nil
+						}).
+						AnyTimes()
+					clientFactory.
+						EXPECT().
+						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 							t.Logf("Get method called")
 							return client, nil
 						}).
@@ -599,6 +649,7 @@ func TestAccOpkg_CheckPackageInCreateIsFailing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
+	timeouts := mocks.NewMockTimeouts(ctrl)
 	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
@@ -613,8 +664,15 @@ func TestAccOpkg_CheckPackageInCreateIsFailing(t *testing.T) {
 
 					clientFactory.
 						EXPECT().
-						Get("http://test.lan:8080").
-						DoAndReturn(func(s string) (api.Client, error) {
+						ParseTimeouts(gomock.Any(), gomock.Any()).
+						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+							return timeouts, nil
+						}).
+						AnyTimes()
+					clientFactory.
+						EXPECT().
+						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 							t.Logf("Get method called")
 							return client, nil
 						}).
@@ -670,6 +728,7 @@ func TestAccOpkg_InstallPackagesIsFailing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
+	timeouts := mocks.NewMockTimeouts(ctrl)
 	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
@@ -684,8 +743,16 @@ func TestAccOpkg_InstallPackagesIsFailing(t *testing.T) {
 
 					clientFactory.
 						EXPECT().
-						Get("http://test.lan:8080").
-						DoAndReturn(func(s string) (api.Client, error) {
+						ParseTimeouts(gomock.Any(), gomock.Any()).
+						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+							return timeouts, nil
+						}).
+						AnyTimes()
+
+					clientFactory.
+						EXPECT().
+						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 							t.Logf("Get method called")
 							return client, nil
 						}).
@@ -755,6 +822,7 @@ func TestAccOpkg_CheckPackageInUpdateIsFailing(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
+	timeouts := mocks.NewMockTimeouts(ctrl)
 	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
@@ -769,8 +837,16 @@ func TestAccOpkg_CheckPackageInUpdateIsFailing(t *testing.T) {
 
 					clientFactory.
 						EXPECT().
-						Get("http://test.lan:8080").
-						DoAndReturn(func(s string) (api.Client, error) {
+						ParseTimeouts(gomock.Any(), gomock.Any()).
+						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+							return timeouts, nil
+						}).
+						AnyTimes()
+
+					clientFactory.
+						EXPECT().
+						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 							t.Logf("Get method called")
 							return client, nil
 						}).

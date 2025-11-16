@@ -28,6 +28,7 @@ func TestAccService_CheckServiceEnabledIfOmitted(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
+	timeouts := mocks.NewMockTimeouts(ctrl)
 	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
@@ -79,8 +80,16 @@ func TestAccService_CheckServiceEnabledIfOmitted(t *testing.T) {
 
 					clientFactory.
 						EXPECT().
-						Get("http://test.lan:8080").
-						DoAndReturn(func(_ string) (api.Client, error) {
+						ParseTimeouts(gomock.Any(), gomock.Any()).
+						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+							return timeouts, nil
+						}).
+						AnyTimes()
+
+					clientFactory.
+						EXPECT().
+						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 							t.Logf("Get method called")
 							return client, nil
 						}).
@@ -133,6 +142,7 @@ func TestAccService_CheckServiceEnable(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
+	timeouts := mocks.NewMockTimeouts(ctrl)
 	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
@@ -188,8 +198,16 @@ func TestAccService_CheckServiceEnable(t *testing.T) {
 
 			clientFactory.
 				EXPECT().
-				Get("http://test.lan:8080").
-				DoAndReturn(func(_ string) (api.Client, error) {
+				ParseTimeouts(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+					return timeouts, nil
+				}).
+				AnyTimes()
+
+			clientFactory.
+				EXPECT().
+				Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 					t.Logf("Get method called")
 					return client, nil
 				}).
@@ -288,6 +306,7 @@ func TestAccService_CheckServiceDisable(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
+	timeouts := mocks.NewMockTimeouts(ctrl)
 	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
@@ -334,8 +353,16 @@ func TestAccService_CheckServiceDisable(t *testing.T) {
 
 			clientFactory.
 				EXPECT().
-				Get("http://test.lan:8080").
-				DoAndReturn(func(_ string) (api.Client, error) {
+				ParseTimeouts(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+					return timeouts, nil
+				}).
+				AnyTimes()
+
+			clientFactory.
+				EXPECT().
+				Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 					t.Logf("Get method called")
 					return client, nil
 				}).
@@ -392,6 +419,7 @@ func TestAccService_CheckServiceEnableDisable(t *testing.T) {
 	defer ctrl.Finish()
 
 	clientFactory := mocks.NewMockClientFactory(ctrl)
+	timeouts := mocks.NewMockTimeouts(ctrl)
 	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
 
 	resource.Test(t, resource.TestCase{
@@ -458,8 +486,16 @@ func TestAccService_CheckServiceEnableDisable(t *testing.T) {
 
 			clientFactory.
 				EXPECT().
-				Get("http://test.lan:8080").
-				DoAndReturn(func(_ string) (api.Client, error) {
+				ParseTimeouts(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
+					return timeouts, nil
+				}).
+				AnyTimes()
+
+			clientFactory.
+				EXPECT().
+				Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
 					t.Logf("Get method called")
 					return client, nil
 				}).

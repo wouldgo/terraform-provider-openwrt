@@ -53,6 +53,8 @@ type OpenWRTProviderModel struct {
 	User     types.String `tfsdk:"user"`
 	Password types.String `tfsdk:"password"`
 	Remote   types.String `tfsdk:"remote"`
+
+	ApiTimeouts *api.TimeoutsModel `tfsdk:"api_timeouts"`
 }
 
 func (p *OpenWRTProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -67,11 +69,6 @@ func (p *OpenWRTProvider) Schema(ctx context.Context, req provider.SchemaRequest
 The JSON RPC API requires a couple of packages to be used. Please see [Using the JSON-RPC API](https://github.com/openwrt/luci/blob/master/docs/JsonRpcHowTo.md) from openwrt.`,
 		Description: "Terraform, or OpenTofu, provider to manage openwrt routers",
 		Attributes: map[string]schema.Attribute{
-			"remote": schema.StringAttribute{
-				MarkdownDescription: `The username of the admin account. Optionally OPENWRT_REMOTE env variable can be set and used to specify the remote url. One between this attribute or the env variable must be set`,
-				Description:         `The username of the admin account. Optionally OPENWRT_REMOTE env variable can be set and used to specify the remote url. One between this attribute or the env variable must be set`,
-				Optional:            true,
-			},
 			"user": schema.StringAttribute{
 				MarkdownDescription: `The password of the account. Optionally OPENWRT_USER env variable can be set and used to specify the user. One between this attribute or the env variable must be set`,
 				Description:         `The password of the account. Optionally OPENWRT_USER env variable can be set and used to specify the user. One between this attribute or the env variable must be set`,
@@ -82,6 +79,12 @@ The JSON RPC API requires a couple of packages to be used. Please see [Using the
 				Description:         `The URL of the JSON RPC API. Optionally OPENWRT_PASSWORD env variable can be set and used to specify the password. One between this attribute or the env variable must be set`,
 				Optional:            true,
 			},
+			"remote": schema.StringAttribute{
+				MarkdownDescription: `The username of the admin account. Optionally OPENWRT_REMOTE env variable can be set and used to specify the remote url. One between this attribute or the env variable must be set`,
+				Description:         `The username of the admin account. Optionally OPENWRT_REMOTE env variable can be set and used to specify the remote url. One between this attribute or the env variable must be set`,
+				Optional:            true,
+			},
+			"api_timeouts": api.TimeoutSchemaAttribute,
 		},
 	}
 }
@@ -103,9 +106,14 @@ func (p *OpenWRTProvider) Configure(ctx context.Context, req provider.ConfigureR
 		remoteUrl = openWRTRemoteEnv
 	}
 
-	c, err = p.clientFactory.Get(remoteUrl)
+	apiTimeouts, err := p.clientFactory.ParseTimeouts(ctx, data.ApiTimeouts)
 	if err != nil {
-		resp.Diagnostics.AddError("failed to instantiate remote client from env variable", err.Error())
+		resp.Diagnostics.AddError("failed to parse timeouts", err.Error())
+		return
+	}
+	c, err = p.clientFactory.Get(ctx, remoteUrl, apiTimeouts)
+	if err != nil {
+		resp.Diagnostics.AddError("failed to instantiate remote client", err.Error())
 		return
 	}
 
