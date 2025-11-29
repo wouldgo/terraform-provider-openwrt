@@ -1,11 +1,10 @@
-terraform-provider-openwrt
-==========================
+# Openwrt Terraform Provider
 
-openwrt provider for Terraform.
+Openwrt Provider for Terraform (or OpenTofu).
 
 ## Prerequisites
 
-- [Terraform](http://terraform.io)
+- [Terraform](https://terraform.io) or [OpenTofu](https://opentofu.org/)
 - [An OpenWRT Router](https://openwrt.org)
 - `luasocket` `luci-mod-rpc` `luci-lib-ipkg` and `luci-compat` packages installed in the openwrt router
 
@@ -33,14 +32,14 @@ Full documentation can be found in the [`docs`](docs) directory.
 
 ## Development
 
-#### Prerequisites
+### Prerequisites
 
 - [Golang](https://golang.org/doc/install)
 - [Make](https://www.gnu.org/software/make/)
 - [Golangci-lint](https://golangci-lint.run/)
 - [GoReleaser](https://goreleaser.com/)
 
-#### Setup
+### Setup
 
 1. Checkout the repository `git clone ...`
 2. Compile from sources to a development binary:
