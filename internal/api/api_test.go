@@ -444,8 +444,8 @@ func TestCallAuth(t *testing.T) {
 	if err != nil {
 		t.Errorf("auth call not expected to fail. Found %v", err)
 	}
-	if mockedCall.currentURL.Path != "cgi-bin/luci/rpc/"+expectedRPC {
-		t.Errorf("expected returned auth url as cgi-bin/luci/rpc/%s. Found \"%s\"", expectedRPC, mockedCall.currentURL.Path)
+	if mockedCall.currentURL.Path != "cgi-bin/luci/rpc/auth" {
+		t.Errorf("expected returned auth url as cgi-bin/luci/rpc/auth. Found \"%s\"", mockedCall.currentURL.Path)
 	}
 	if mockedCall.currentURL.Query().Get("auth") != authToken {
 		t.Errorf("expected returned auth url with \"auth\" query string param to %s. Found \"%s\"", authToken, mockedCall.currentURL.Query().Get("auth"))
