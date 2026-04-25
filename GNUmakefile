@@ -3,8 +3,6 @@ OUT := $(shell pwd)/_out
 
 EXCLUDED_PACKAGES := \
 	github.com/foxboron/terraform-provider-openwrt \
-	github.com/foxboron/terraform-provider-openwrt/internal/api \
-	github.com/foxboron/terraform-provider-openwrt/internal/types \
 	github.com/foxboron/terraform-provider-openwrt/mocks
 
 PACKAGES := $(shell go list ./... | grep -Fvx -f <(printf '%s\n' $(EXCLUDED_PACKAGES)))
@@ -31,8 +29,10 @@ generate:
 build: generate
 	go build -v
 
-test:
-	go test -tags=test -race -parallel=10 -timeout 120s -cover -coverprofile=_out/.coverage -v $(PACKAGES);
+test: clean generate
+	go test \
+		-tags=test -timeout 60s -cover -coverprofile=_out/.coverage -v \
+			$(PACKAGES);
 	go tool cover -html=_out/.coverage -o=./_out/coverage.html
 
 snapshot:

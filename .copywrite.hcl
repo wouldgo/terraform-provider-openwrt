@@ -10,6 +10,7 @@ project {
   header_ignore = [
     "**/types/**",
     "tools/**",
+    ".golangci.yml",
     ".goreleaser.yml",
     "docs/**",
     "examples/**",
