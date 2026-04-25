@@ -3,7 +3,15 @@ provider "openwrt" {
   password = "admin"
   remote   = "http://192.168.8.1:8080"
   api_timeouts = {
-    auth = "20s"
+    auth = "20s",
+    opkg = {
+      install_packages = "4m"
+    }
+  }
+  api_attempts = {
+    opkg = {
+      install_packages = 4
+    }
   }
 }
 
