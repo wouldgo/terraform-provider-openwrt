@@ -1,4 +1,4 @@
-// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// Copyright https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors 2025, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package service
@@ -7,11 +7,118 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/foxboron/terraform-provider-openwrt/internal/api"
+	rpc "github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+var (
+	ServiceTimeoutSchemaAttribute = schema.SingleNestedAttribute{
+		MarkdownDescription: `Service operations timeout configuration`,
+		Description:         `Service operations timeout configuration`,
+		Optional:            true,
+		Attributes: map[string]schema.Attribute{
+			"list_services": schema.StringAttribute{
+				MarkdownDescription: `List services RPC timeout value`,
+				Description:         `List services RPC timeout value`,
+				Optional:            true,
+			},
+			"is_enabled": schema.StringAttribute{
+				MarkdownDescription: `Is enabled service RPC timeout value`,
+				Description:         `Is enabled service RPC timeout value`,
+				Optional:            true,
+			},
+			"disable_service": schema.StringAttribute{
+				MarkdownDescription: `Disable service RPC timeout value`,
+				Description:         `Disable service RPC timeout value`,
+				Optional:            true,
+			},
+			"enable_service": schema.StringAttribute{
+				MarkdownDescription: `Enable service RPC timeout value`,
+				Description:         `Enable service RPC timeout value`,
+				Optional:            true,
+			},
+			"start_service": schema.StringAttribute{
+				MarkdownDescription: `Start service RPC timeout value`,
+				Description:         `Start service RPC timeout value`,
+				Optional:            true,
+			},
+			"stop_sevice": schema.StringAttribute{
+				MarkdownDescription: `Stop service RPC timeout value`,
+				Description:         `Stop service RPC timeout value`,
+				Optional:            true,
+			},
+			"restart_service": schema.StringAttribute{
+				MarkdownDescription: `Restart service RPC timeout value`,
+				Description:         `Restart service RPC timeout value`,
+				Optional:            true,
+			},
+		},
+	}
+	ServiceAttemptsSchemaAttribute = schema.SingleNestedAttribute{
+		MarkdownDescription: `Service operations attempts configuration`,
+		Description:         `Service operations attempts configuration`,
+		Optional:            true,
+		Attributes: map[string]schema.Attribute{
+			"list_services": schema.Int32Attribute{
+				MarkdownDescription: `List services RPC attempts value`,
+				Description:         `List services RPC attempts value`,
+				Optional:            true,
+			},
+			"is_enabled": schema.Int32Attribute{
+				MarkdownDescription: `Is enabled service RPC attempts value`,
+				Description:         `Is enabled service RPC attempts value`,
+				Optional:            true,
+			},
+			"disable_service": schema.Int32Attribute{
+				MarkdownDescription: `Disable service RPC attempts value`,
+				Description:         `Disable service RPC attempts value`,
+				Optional:            true,
+			},
+			"enable_service": schema.Int32Attribute{
+				MarkdownDescription: `Enable service RPC attempts value`,
+				Description:         `Enable service RPC attempts value`,
+				Optional:            true,
+			},
+			"start_service": schema.Int32Attribute{
+				MarkdownDescription: `Start service RPC attempts value`,
+				Description:         `Start service RPC attempts value`,
+				Optional:            true,
+			},
+			"stop_sevice": schema.Int32Attribute{
+				MarkdownDescription: `Stop service RPC attempts value`,
+				Description:         `Stop service RPC attempts value`,
+				Optional:            true,
+			},
+			"restart_service": schema.Int32Attribute{
+				MarkdownDescription: `Restart service RPC attempts value`,
+				Description:         `Restart service RPC attempts value`,
+				Optional:            true,
+			},
+		},
+	}
+)
+
+type ServiceTimeoutsModel struct {
+	ListServicesTimeout   types.String `tfsdk:"list_services"`
+	IsEnabledTimeout      types.String `tfsdk:"is_enabled"`
+	DisableServiceTimeout types.String `tfsdk:"disable_service"`
+	EnableServiceTimeout  types.String `tfsdk:"enable_service"`
+	StartServiceTimeout   types.String `tfsdk:"start_service"`
+	StopSeviceTimeout     types.String `tfsdk:"stop_sevice"`
+	RestartServiceTimeout types.String `tfsdk:"restart_service"`
+}
+
+type ServiceAttemptsModel struct {
+	ListServicesAttempts   types.Int32 `tfsdk:"list_services"`
+	IsEnabledAttempts      types.Int32 `tfsdk:"is_enabled"`
+	DisableServiceAttempts types.Int32 `tfsdk:"disable_service"`
+	EnableServiceAttempts  types.Int32 `tfsdk:"enable_service"`
+	StartServiceAttempts   types.Int32 `tfsdk:"start_service"`
+	StopSeviceAttempts     types.Int32 `tfsdk:"stop_sevice"`
+	RestartServiceAttempts types.Int32 `tfsdk:"restart_service"`
+}
 
 type serviceModel struct {
 	Name     types.String `tfsdk:"name"`
@@ -20,7 +127,7 @@ type serviceModel struct {
 }
 
 type serviceResource struct {
-	initFacade api.ServiceFacade
+	initFacade rpc.ServiceFacade
 }
 
 func NewServiceResource() resource.Resource {
@@ -62,7 +169,7 @@ func (s *serviceResource) Configure(_ context.Context, req resource.ConfigureReq
 	if data == nil {
 		return
 	}
-	initFacade, ok := data.(api.ServiceFacade)
+	initFacade, ok := data.(rpc.ServiceFacade)
 	if !ok {
 		resp.Diagnostics.AddError("failed to get init facace", "")
 		return

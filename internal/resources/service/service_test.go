@@ -1,4 +1,4 @@
-// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// Copyright https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors 2025, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package service_test
@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/foxboron/terraform-provider-openwrt/internal/api"
+	"github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
 	"github.com/foxboron/terraform-provider-openwrt/internal/testutil"
 
 	"github.com/foxboron/terraform-provider-openwrt/mocks"
@@ -27,9 +27,8 @@ func TestAccService_CheckServiceEnabledIfOmitted(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	clientFactory := mocks.NewMockClientFactory(ctrl)
-	timeouts := mocks.NewMockTimeouts(ctrl)
-	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
+	rpcFactory := mocks.NewMockRPCFactory(ctrl)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(rpcFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -39,18 +38,9 @@ func TestAccService_CheckServiceEnabledIfOmitted(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				PreConfig: func() {
-					client := mocks.NewMockClient(ctrl)
+					theRPC := mocks.NewMockRPC(ctrl)
 
-					client.
-						EXPECT().
-						Auth(gomock.Any(), "root", "test").
-						DoAndReturn(func(_ context.Context, username, password string) error {
-							t.Logf("Auth method called with: %s, %s", username, password)
-							return nil
-						}).
-						AnyTimes()
-
-					client.
+					theRPC.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
 						DoAndReturn(func(_ context.Context) error {
@@ -59,7 +49,7 @@ func TestAccService_CheckServiceEnabledIfOmitted(t *testing.T) {
 						}).
 						AnyTimes()
 
-					client.
+					theRPC.
 						EXPECT().
 						IsEnabled(gomock.Any(), "service#1").
 						DoAndReturn(func(_ context.Context, _ string) (bool, error) {
@@ -69,7 +59,7 @@ func TestAccService_CheckServiceEnabledIfOmitted(t *testing.T) {
 						}).
 						AnyTimes()
 
-					client.
+					theRPC.
 						EXPECT().
 						EnableService(gomock.Any(), "service#1").
 						DoAndReturn(func(_ context.Context, _ string) error {
@@ -78,20 +68,12 @@ func TestAccService_CheckServiceEnabledIfOmitted(t *testing.T) {
 						}).
 						AnyTimes()
 
-					clientFactory.
+					rpcFactory.
 						EXPECT().
-						ParseTimeouts(gomock.Any(), gomock.Any()).
-						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-							return timeouts, nil
-						}).
-						AnyTimes()
-
-					clientFactory.
-						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
+						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
+						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
 							t.Logf("Get method called")
-							return client, nil
+							return theRPC, nil
 						}).
 						AnyTimes()
 				},
@@ -141,25 +123,15 @@ func TestAccService_CheckServiceEnable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	clientFactory := mocks.NewMockClientFactory(ctrl)
-	timeouts := mocks.NewMockTimeouts(ctrl)
-	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
+	rpcFactory := mocks.NewMockRPCFactory(ctrl)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(rpcFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck: func() {
-			client := mocks.NewMockClient(ctrl)
+			theRPC := mocks.NewMockRPC(ctrl)
 
-			client.
-				EXPECT().
-				Auth(gomock.Any(), "root", "test").
-				DoAndReturn(func(_ context.Context, username, password string) error {
-					t.Logf("Auth method called with: %s, %s", username, password)
-					return nil
-				}).
-				AnyTimes()
-
-			client.
+			theRPC.
 				EXPECT().
 				UpdatePackages(gomock.Any()).
 				DoAndReturn(func(_ context.Context) error {
@@ -168,7 +140,7 @@ func TestAccService_CheckServiceEnable(t *testing.T) {
 				}).
 				AnyTimes()
 
-			client.
+			theRPC.
 				EXPECT().
 				IsEnabled(gomock.Any(), "service#1").
 				DoAndReturn(func(_ context.Context, _ string) (bool, error) {
@@ -178,7 +150,7 @@ func TestAccService_CheckServiceEnable(t *testing.T) {
 				}).
 				AnyTimes()
 
-			client.
+			theRPC.
 				EXPECT().
 				EnableService(gomock.Any(), "service#1").
 				DoAndReturn(func(_ context.Context, _ string) error {
@@ -187,7 +159,7 @@ func TestAccService_CheckServiceEnable(t *testing.T) {
 				}).
 				AnyTimes()
 
-			client.
+			theRPC.
 				EXPECT().
 				RestartService(gomock.Any(), "service#1").
 				DoAndReturn(func(_ context.Context, _ string) error {
@@ -196,20 +168,12 @@ func TestAccService_CheckServiceEnable(t *testing.T) {
 				}).
 				AnyTimes()
 
-			clientFactory.
+			rpcFactory.
 				EXPECT().
-				ParseTimeouts(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-					return timeouts, nil
-				}).
-				AnyTimes()
-
-			clientFactory.
-				EXPECT().
-				Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-				DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
+				Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
 					t.Logf("Get method called")
-					return client, nil
+					return theRPC, nil
 				}).
 				AnyTimes()
 		},
@@ -305,25 +269,15 @@ func TestAccService_CheckServiceDisable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	clientFactory := mocks.NewMockClientFactory(ctrl)
-	timeouts := mocks.NewMockTimeouts(ctrl)
-	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
+	rpcFactory := mocks.NewMockRPCFactory(ctrl)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(rpcFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck: func() {
-			client := mocks.NewMockClient(ctrl)
+			theRPC := mocks.NewMockRPC(ctrl)
 
-			client.
-				EXPECT().
-				Auth(gomock.Any(), "root", "test").
-				DoAndReturn(func(_ context.Context, username, password string) error {
-					t.Logf("Auth method called with: %s, %s", username, password)
-					return nil
-				}).
-				AnyTimes()
-
-			client.
+			theRPC.
 				EXPECT().
 				UpdatePackages(gomock.Any()).
 				DoAndReturn(func(_ context.Context) error {
@@ -332,7 +286,7 @@ func TestAccService_CheckServiceDisable(t *testing.T) {
 				}).
 				AnyTimes()
 
-			client.
+			theRPC.
 				EXPECT().
 				IsEnabled(gomock.Any(), "service#1").
 				DoAndReturn(func(_ context.Context, _ string) (bool, error) {
@@ -342,7 +296,7 @@ func TestAccService_CheckServiceDisable(t *testing.T) {
 				}).
 				AnyTimes()
 
-			client.
+			theRPC.
 				EXPECT().
 				DisableService(gomock.Any(), "service#1").
 				DoAndReturn(func(_ context.Context, _ string) error {
@@ -351,20 +305,12 @@ func TestAccService_CheckServiceDisable(t *testing.T) {
 				}).
 				AnyTimes()
 
-			clientFactory.
+			rpcFactory.
 				EXPECT().
-				ParseTimeouts(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-					return timeouts, nil
-				}).
-				AnyTimes()
-
-			clientFactory.
-				EXPECT().
-				Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-				DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
+				Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
 					t.Logf("Get method called")
-					return client, nil
+					return theRPC, nil
 				}).
 				AnyTimes()
 		},
@@ -418,25 +364,15 @@ func TestAccService_CheckServiceEnableDisable(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	clientFactory := mocks.NewMockClientFactory(ctrl)
-	timeouts := mocks.NewMockTimeouts(ctrl)
-	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
+	rpcFactory := mocks.NewMockRPCFactory(ctrl)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(rpcFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck: func() {
-			client := mocks.NewMockClient(ctrl)
+			theRPC := mocks.NewMockRPC(ctrl)
 
-			client.
-				EXPECT().
-				Auth(gomock.Any(), "root", "test").
-				DoAndReturn(func(_ context.Context, username, password string) error {
-					t.Logf("Auth method called with: %s, %s", username, password)
-					return nil
-				}).
-				AnyTimes()
-
-			client.
+			theRPC.
 				EXPECT().
 				UpdatePackages(gomock.Any()).
 				DoAndReturn(func(_ context.Context) error {
@@ -445,7 +381,7 @@ func TestAccService_CheckServiceEnableDisable(t *testing.T) {
 				}).
 				AnyTimes()
 
-			isEnableToTrueCalled := client.
+			isEnableToTrueCalled := theRPC.
 				EXPECT().
 				IsEnabled(gomock.Any(), "service#1").
 				DoAndReturn(func(_ context.Context, _ string) (bool, error) {
@@ -455,7 +391,7 @@ func TestAccService_CheckServiceEnableDisable(t *testing.T) {
 				}).
 				Times(2)
 
-			client.
+			theRPC.
 				EXPECT().
 				IsEnabled(gomock.Any(), "service#1").
 				After(isEnableToTrueCalled).
@@ -466,7 +402,7 @@ func TestAccService_CheckServiceEnableDisable(t *testing.T) {
 				}).
 				AnyTimes()
 
-			client.
+			theRPC.
 				EXPECT().
 				EnableService(gomock.Any(), "service#1").
 				DoAndReturn(func(_ context.Context, _ string) error {
@@ -475,7 +411,7 @@ func TestAccService_CheckServiceEnableDisable(t *testing.T) {
 				}).
 				AnyTimes()
 
-			client.
+			theRPC.
 				EXPECT().
 				DisableService(gomock.Any(), "service#1").
 				DoAndReturn(func(_ context.Context, _ string) error {
@@ -484,20 +420,12 @@ func TestAccService_CheckServiceEnableDisable(t *testing.T) {
 				}).
 				AnyTimes()
 
-			clientFactory.
+			rpcFactory.
 				EXPECT().
-				ParseTimeouts(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-					return timeouts, nil
-				}).
-				AnyTimes()
-
-			clientFactory.
-				EXPECT().
-				Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-				DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
+				Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
 					t.Logf("Get method called")
-					return client, nil
+					return theRPC, nil
 				}).
 				AnyTimes()
 		},

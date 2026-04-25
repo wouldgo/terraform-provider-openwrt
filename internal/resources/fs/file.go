@@ -1,4 +1,4 @@
-// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// Copyright https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors 2025, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package fs
@@ -9,11 +9,70 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/foxboron/terraform-provider-openwrt/internal/api"
+	rpc "github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+var (
+	FsTimeoutSchemaAttribute = schema.SingleNestedAttribute{
+		MarkdownDescription: `Filesystem operations timeout configuration`,
+		Description:         `Filesystem operations timeout configuration`,
+		Optional:            true,
+		Attributes: map[string]schema.Attribute{
+			"write_file": schema.StringAttribute{
+				MarkdownDescription: `Write file RPC timeout value`,
+				Description:         `Write file RPC timeout value`,
+				Optional:            true,
+			},
+			"read_file": schema.StringAttribute{
+				MarkdownDescription: `Read file RPC timeout value`,
+				Description:         `Read file RPC timeout value`,
+				Optional:            true,
+			},
+			"remove_file": schema.StringAttribute{
+				MarkdownDescription: `Remove file RPC timeout value`,
+				Description:         `Remove file RPC timeout value`,
+				Optional:            true,
+			},
+		},
+	}
+	FsAttemptsSchemaAttribute = schema.SingleNestedAttribute{
+		MarkdownDescription: `Filesystem operations attempts configuration`,
+		Description:         `Filesystem operations attempts configuration`,
+		Optional:            true,
+		Attributes: map[string]schema.Attribute{
+			"write_file": schema.Int32Attribute{
+				MarkdownDescription: `Write file RPC attempts value`,
+				Description:         `Write file RPC attempts value`,
+				Optional:            true,
+			},
+			"read_file": schema.Int32Attribute{
+				MarkdownDescription: `Read file RPC attempts value`,
+				Description:         `Read file RPC attempts value`,
+				Optional:            true,
+			},
+			"remove_file": schema.Int32Attribute{
+				MarkdownDescription: `Remove file RPC attempts value`,
+				Description:         `Remove file RPC attempts value`,
+				Optional:            true,
+			},
+		},
+	}
+)
+
+type FsTimeoutsModel struct {
+	WriteFileTimeout  types.String `tfsdk:"write_file"`
+	ReadFileTimeout   types.String `tfsdk:"read_file"`
+	RemoveFileTimeout types.String `tfsdk:"remove_file"`
+}
+
+type FsAttemptsModel struct {
+	WriteFileAttempts  types.Int32 `tfsdk:"write_file"`
+	ReadFileAttempts   types.Int32 `tfsdk:"read_file"`
+	RemoveFileAttempts types.Int32 `tfsdk:"remove_file"`
+}
 
 type fileModel struct {
 	Path    types.String `tfsdk:"path"`
@@ -22,7 +81,7 @@ type fileModel struct {
 }
 
 type fileResource struct {
-	fsFacade api.FsFacade
+	fsFacade rpc.FsFacade
 }
 
 func NewFileResource() resource.Resource {
@@ -62,7 +121,7 @@ func (c *fileResource) Configure(_ context.Context, req resource.ConfigureReques
 	if data == nil {
 		return
 	}
-	fsFacade, ok := data.(api.FsFacade)
+	fsFacade, ok := data.(rpc.FsFacade)
 	if !ok {
 		resp.Diagnostics.AddError("Failed to get fs facade", "")
 		return

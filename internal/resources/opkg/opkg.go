@@ -1,4 +1,4 @@
-// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// Copyright https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors 2025, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package opkg
@@ -6,8 +6,9 @@ package opkg
 import (
 	"context"
 	"fmt"
+	"strings"
 
-	"github.com/foxboron/terraform-provider-openwrt/internal/api"
+	rpc "github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -15,12 +16,83 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
+var (
+	OpkgTimeoutSchemaAttribute = schema.SingleNestedAttribute{
+		MarkdownDescription: `Opkg operations timeout configuration`,
+		Description:         `Opkg operations timeout configuration`,
+		Optional:            true,
+		Attributes: map[string]schema.Attribute{
+			"update_packages": schema.StringAttribute{
+				MarkdownDescription: `Update packages RPC timeout value`,
+				Description:         `Update packages RPC timeout value`,
+				Optional:            true,
+			},
+			"check_package": schema.StringAttribute{
+				MarkdownDescription: `Check package RPC timeout value`,
+				Description:         `Check package RPC timeout value`,
+				Optional:            true,
+			},
+			"install_packages": schema.StringAttribute{
+				MarkdownDescription: `Install packages RPC timeout value`,
+				Description:         `Install packages RPC timeout value`,
+				Optional:            true,
+			},
+			"remove_packages": schema.StringAttribute{
+				MarkdownDescription: `Remove packages RPC timeout value`,
+				Description:         `Remove packages RPC timeout value`,
+				Optional:            true,
+			},
+		},
+	}
+	OpkgAttemptsSchemaAttribute = schema.SingleNestedAttribute{
+		MarkdownDescription: `Opkg operations attempts configuration`,
+		Description:         `Opkg operations attempts configuration`,
+		Optional:            true,
+		Attributes: map[string]schema.Attribute{
+			"update_packages": schema.Int32Attribute{
+				MarkdownDescription: `Update packages RPC attempts value`,
+				Description:         `Update packages RPC attempts value`,
+				Optional:            true,
+			},
+			"check_package": schema.Int32Attribute{
+				MarkdownDescription: `Check package RPC attempts value`,
+				Description:         `Check package RPC attempts value`,
+				Optional:            true,
+			},
+			"install_packages": schema.Int32Attribute{
+				MarkdownDescription: `Install packages RPC attempts value`,
+				Description:         `Install packages RPC attempts value`,
+				Optional:            true,
+			},
+			"remove_packages": schema.Int32Attribute{
+				MarkdownDescription: `Remove packages RPC attempts value`,
+				Description:         `Remove packages RPC attempts value`,
+				Optional:            true,
+			},
+		},
+	}
+)
+
+type OpkgTimeoutsModel struct {
+	UpdatePackagesTimeout  types.String `tfsdk:"update_packages"`
+	CheckPackageTimeout    types.String `tfsdk:"check_package"`
+	InstallPackagesTimeout types.String `tfsdk:"install_packages"`
+	RemovePackagesTimeout  types.String `tfsdk:"remove_packages"`
+}
+
+type OpkgAttemptsModel struct {
+	UpdatePackagesAttempts  types.Int32 `tfsdk:"update_packages"`
+	CheckPackageAttempts    types.Int32 `tfsdk:"check_package"`
+	InstallPackagesAttempts types.Int32 `tfsdk:"install_packages"`
+	RemovePackagesAttempts  types.Int32 `tfsdk:"remove_packages"`
+}
+
 type opkgModel struct {
 	Packages types.List `tfsdk:"packages"`
 }
 
 type opkgResource struct {
-	opkgFacade api.OpkgFacade
+	opkgFacade rpc.OpkgFacade
 }
 
 func NewOpkgResource() resource.Resource {
@@ -46,16 +118,23 @@ func (c opkgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 	}
 }
 
-func (c *opkgResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (c *opkgResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	data := req.ProviderData
 	if data == nil {
 		return
 	}
-	opkgFacade, ok := data.(api.OpkgFacade)
+	opkgFacade, ok := data.(rpc.OpkgFacade)
 	if !ok {
 		resp.Diagnostics.AddError("failed to get opkg facade", "")
 		return
 	}
+
+	err := opkgFacade.UpdatePackages(ctx)
+	if err != nil {
+		resp.Diagnostics.AddError("packages update in error", err.Error())
+		return
+	}
+
 	c.opkgFacade = opkgFacade
 }
 
@@ -67,6 +146,7 @@ func (c opkgResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
+	toInstall := make([]string, 0, len(plan.Packages.Elements()))
 	for _, aPackage := range plan.Packages.Elements() {
 		value, err := aPackage.ToTerraformValue(ctx)
 		if err != nil {
@@ -87,12 +167,18 @@ func (c opkgResource) Create(ctx context.Context, req resource.CreateRequest, re
 		}
 
 		if !re.Status.Installed {
-			if err = c.opkgFacade.InstallPackages(ctx, valueStr); err != nil {
-				resp.Diagnostics.AddError("failed to install package", fmt.Sprintf("%s: %v", valueStr, err))
-				return
-			}
+			toInstall = append(toInstall, valueStr)
 		}
 	}
+
+	if len(toInstall) > 0 {
+
+		if err := c.opkgFacade.InstallPackages(ctx, toInstall...); err != nil {
+			resp.Diagnostics.AddError("failed to install packages", fmt.Sprintf("[%s]: %v", strings.Join(toInstall, ", "), err))
+			return
+		}
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -184,24 +270,34 @@ func (c opkgResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 
 	// additions
+	packagesToInstall := make([]string, 0, len(planSet))
 	for aPackageInPlan := range planSet {
 		if _, aPackageInPlanAlsoInState := stateSet[aPackageInPlan]; !aPackageInPlanAlsoInState { // new package
-			if err := c.opkgFacade.InstallPackages(ctx, aPackageInPlan); err != nil {
-				resp.Diagnostics.AddError("failed to install package", fmt.Sprintf("%s: %v", aPackageInPlan, err))
-				return
-			}
+			packagesToInstall = append(packagesToInstall, aPackageInPlan)
 		} else { // already existing do nothing
 			resp.Diagnostics.AddWarning("package already installed", aPackageInPlan)
 		}
 	}
 
+	if len(packagesToInstall) > 0 {
+		if err := c.opkgFacade.InstallPackages(ctx, packagesToInstall...); err != nil {
+			resp.Diagnostics.AddError("failed to install package", fmt.Sprintf("[%s]: %v", strings.Join(packagesToInstall, ", "), err))
+			return
+		}
+	}
+
 	// removals
+	packagesToRemove := make([]string, 0, len(stateSet))
 	for aPackageInState := range stateSet {
 		if _, aPackageInStateAlsoInPlan := planSet[aPackageInState]; !aPackageInStateAlsoInPlan { // package no more in plan
-			if err := c.opkgFacade.RemovePackages(ctx, aPackageInState); err != nil {
-				resp.Diagnostics.AddError("failed to remove package", fmt.Sprintf("%s: %v", aPackageInState, err))
-				return
-			}
+			packagesToRemove = append(packagesToRemove, aPackageInState)
+		}
+	}
+
+	if len(packagesToRemove) > 0 {
+		if err := c.opkgFacade.RemovePackages(ctx, packagesToRemove...); err != nil {
+			resp.Diagnostics.AddError("failed to remove package", fmt.Sprintf("[%s]: %v", strings.Join(packagesToRemove, ", "), err))
+			return
 		}
 	}
 

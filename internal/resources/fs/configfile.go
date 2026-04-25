@@ -1,4 +1,4 @@
-// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// Copyright https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors 2025, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package fs
@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/foxboron/terraform-provider-openwrt/internal/api"
+	rpc "github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -26,7 +26,7 @@ type configFileModel struct {
 
 // configFileResource represent Incus project resource.
 type configFileResource struct {
-	provider api.Client
+	provider rpc.RPC
 }
 
 // NewProjectResource return new project resource.
@@ -70,7 +70,7 @@ func (c *configFileResource) Configure(_ context.Context, req resource.Configure
 	if data == nil {
 		return
 	}
-	provider, ok := data.(api.Client)
+	provider, ok := data.(rpc.RPC)
 	if !ok {
 		resp.Diagnostics.AddError("Failed to get api client", "")
 		return
