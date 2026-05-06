@@ -38,40 +38,12 @@ var (
 			},
 		},
 	}
-	FsAttemptsSchemaAttribute = schema.SingleNestedAttribute{
-		MarkdownDescription: `Filesystem operations attempts configuration`,
-		Description:         `Filesystem operations attempts configuration`,
-		Optional:            true,
-		Attributes: map[string]schema.Attribute{
-			"write_file": schema.Int32Attribute{
-				MarkdownDescription: `Write file RPC attempts value`,
-				Description:         `Write file RPC attempts value`,
-				Optional:            true,
-			},
-			"read_file": schema.Int32Attribute{
-				MarkdownDescription: `Read file RPC attempts value`,
-				Description:         `Read file RPC attempts value`,
-				Optional:            true,
-			},
-			"remove_file": schema.Int32Attribute{
-				MarkdownDescription: `Remove file RPC attempts value`,
-				Description:         `Remove file RPC attempts value`,
-				Optional:            true,
-			},
-		},
-	}
 )
 
 type FsTimeoutsModel struct {
 	WriteFileTimeout  types.String `tfsdk:"write_file"`
 	ReadFileTimeout   types.String `tfsdk:"read_file"`
 	RemoveFileTimeout types.String `tfsdk:"remove_file"`
-}
-
-type FsAttemptsModel struct {
-	WriteFileAttempts  types.Int32 `tfsdk:"write_file"`
-	ReadFileAttempts   types.Int32 `tfsdk:"read_file"`
-	RemoveFileAttempts types.Int32 `tfsdk:"remove_file"`
 }
 
 type fileModel struct {

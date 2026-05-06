@@ -56,48 +56,6 @@ var (
 			},
 		},
 	}
-	ServiceAttemptsSchemaAttribute = schema.SingleNestedAttribute{
-		MarkdownDescription: `Service operations attempts configuration`,
-		Description:         `Service operations attempts configuration`,
-		Optional:            true,
-		Attributes: map[string]schema.Attribute{
-			"list_services": schema.Int32Attribute{
-				MarkdownDescription: `List services RPC attempts value`,
-				Description:         `List services RPC attempts value`,
-				Optional:            true,
-			},
-			"is_enabled": schema.Int32Attribute{
-				MarkdownDescription: `Is enabled service RPC attempts value`,
-				Description:         `Is enabled service RPC attempts value`,
-				Optional:            true,
-			},
-			"disable_service": schema.Int32Attribute{
-				MarkdownDescription: `Disable service RPC attempts value`,
-				Description:         `Disable service RPC attempts value`,
-				Optional:            true,
-			},
-			"enable_service": schema.Int32Attribute{
-				MarkdownDescription: `Enable service RPC attempts value`,
-				Description:         `Enable service RPC attempts value`,
-				Optional:            true,
-			},
-			"start_service": schema.Int32Attribute{
-				MarkdownDescription: `Start service RPC attempts value`,
-				Description:         `Start service RPC attempts value`,
-				Optional:            true,
-			},
-			"stop_sevice": schema.Int32Attribute{
-				MarkdownDescription: `Stop service RPC attempts value`,
-				Description:         `Stop service RPC attempts value`,
-				Optional:            true,
-			},
-			"restart_service": schema.Int32Attribute{
-				MarkdownDescription: `Restart service RPC attempts value`,
-				Description:         `Restart service RPC attempts value`,
-				Optional:            true,
-			},
-		},
-	}
 )
 
 type ServiceTimeoutsModel struct {
@@ -108,16 +66,6 @@ type ServiceTimeoutsModel struct {
 	StartServiceTimeout   types.String `tfsdk:"start_service"`
 	StopSeviceTimeout     types.String `tfsdk:"stop_sevice"`
 	RestartServiceTimeout types.String `tfsdk:"restart_service"`
-}
-
-type ServiceAttemptsModel struct {
-	ListServicesAttempts   types.Int32 `tfsdk:"list_services"`
-	IsEnabledAttempts      types.Int32 `tfsdk:"is_enabled"`
-	DisableServiceAttempts types.Int32 `tfsdk:"disable_service"`
-	EnableServiceAttempts  types.Int32 `tfsdk:"enable_service"`
-	StartServiceAttempts   types.Int32 `tfsdk:"start_service"`
-	StopSeviceAttempts     types.Int32 `tfsdk:"stop_sevice"`
-	RestartServiceAttempts types.Int32 `tfsdk:"restart_service"`
 }
 
 type serviceModel struct {

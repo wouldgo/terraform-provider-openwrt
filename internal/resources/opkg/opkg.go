@@ -44,33 +44,6 @@ var (
 			},
 		},
 	}
-	OpkgAttemptsSchemaAttribute = schema.SingleNestedAttribute{
-		MarkdownDescription: `Opkg operations attempts configuration`,
-		Description:         `Opkg operations attempts configuration`,
-		Optional:            true,
-		Attributes: map[string]schema.Attribute{
-			"update_packages": schema.Int32Attribute{
-				MarkdownDescription: `Update packages RPC attempts value`,
-				Description:         `Update packages RPC attempts value`,
-				Optional:            true,
-			},
-			"check_package": schema.Int32Attribute{
-				MarkdownDescription: `Check package RPC attempts value`,
-				Description:         `Check package RPC attempts value`,
-				Optional:            true,
-			},
-			"install_packages": schema.Int32Attribute{
-				MarkdownDescription: `Install packages RPC attempts value`,
-				Description:         `Install packages RPC attempts value`,
-				Optional:            true,
-			},
-			"remove_packages": schema.Int32Attribute{
-				MarkdownDescription: `Remove packages RPC attempts value`,
-				Description:         `Remove packages RPC attempts value`,
-				Optional:            true,
-			},
-		},
-	}
 )
 
 type OpkgTimeoutsModel struct {
@@ -78,13 +51,6 @@ type OpkgTimeoutsModel struct {
 	CheckPackageTimeout    types.String `tfsdk:"check_package"`
 	InstallPackagesTimeout types.String `tfsdk:"install_packages"`
 	RemovePackagesTimeout  types.String `tfsdk:"remove_packages"`
-}
-
-type OpkgAttemptsModel struct {
-	UpdatePackagesAttempts  types.Int32 `tfsdk:"update_packages"`
-	CheckPackageAttempts    types.Int32 `tfsdk:"check_package"`
-	InstallPackagesAttempts types.Int32 `tfsdk:"install_packages"`
-	RemovePackagesAttempts  types.Int32 `tfsdk:"remove_packages"`
 }
 
 type opkgModel struct {

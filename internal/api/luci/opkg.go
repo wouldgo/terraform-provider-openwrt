@@ -36,17 +36,9 @@ type OpkgTimeouts interface {
 	RemovePackages() time.Duration
 }
 
-type OpkgAttempts interface {
-	UpdatePackages() int32
-	CheckPackage() int32
-	InstallPackages() int32
-	RemovePackages() int32
-}
-
 type opkg struct {
 	*api.BaseClient
 	timeouts OpkgTimeouts
-	attempts OpkgAttempts
 }
 
 type PackageInfo struct {
@@ -63,7 +55,6 @@ type Status struct {
 func (c *opkg) UpdatePackages(ctx context.Context) error {
 	thisCall, err := c.PrepareCall(
 		c.timeouts.UpdatePackages(),
-		c.attempts.UpdatePackages(),
 		opkgfRPC,
 		opkgMethodUpdate,
 	)
@@ -78,7 +69,6 @@ func (c *opkg) CheckPackage(ctx context.Context, pack string) (PackageInfo, erro
 	var zero PackageInfo
 	thisCall, err := c.PrepareCall(
 		c.timeouts.CheckPackage(),
-		c.attempts.CheckPackage(),
 		opkgfRPC,
 		opkgMethodStatus,
 		pack,
@@ -104,7 +94,6 @@ func (c *opkg) InstallPackages(ctx context.Context, packages ...string) error {
 
 	thisCall, err := c.PrepareCall(
 		c.timeouts.InstallPackages(),
-		c.attempts.InstallPackages(),
 		opkgfRPC,
 		opkgMethodInstall,
 		toApi...,
@@ -129,7 +118,6 @@ func (c *opkg) RemovePackages(ctx context.Context, packages ...string) error {
 
 	thisCall, err := c.PrepareCall(
 		c.timeouts.RemovePackages(),
-		c.attempts.RemovePackages(),
 		opkgfRPC,
 		opkgMethodRemove,
 		toApi...,

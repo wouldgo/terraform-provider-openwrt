@@ -8,11 +8,6 @@ provider "openwrt" {
       install_packages = "4m"
     }
   }
-  api_attempts = {
-    opkg = {
-      install_packages = 4
-    }
-  }
 }
 
 resource "openwrt_opkg" "wanted_packages" {

@@ -11,7 +11,6 @@ import (
 
 var (
 	_ luci.Timeouts = mockTimeouts{}
-	_ luci.Attempts = mockAttempts{}
 )
 
 type mockTimeouts struct {
@@ -207,28 +206,5 @@ func newMockTimeouts(duration time.Duration) luci.Timeouts {
 		duration,
 		duration,
 		duration,
-	}
-}
-func newMockAttempts(attempts int32) luci.Attempts {
-	return mockAttempts{
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
-		attempts,
 	}
 }

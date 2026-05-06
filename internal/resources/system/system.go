@@ -47,38 +47,6 @@ var (
 			},
 		},
 	}
-	UciAttemptsSchemaAttribute = schema.SingleNestedAttribute{
-		MarkdownDescription: `Uci operations attempts configuration`,
-		Description:         `Uci operations attempts configuration`,
-		Optional:            true,
-		Attributes: map[string]schema.Attribute{
-			"get_all": schema.Int32Attribute{
-				MarkdownDescription: `Get all RPC attempts value`,
-				Description:         `Get all RPC attempts value`,
-				Optional:            true,
-			},
-			"t_set": schema.Int32Attribute{
-				MarkdownDescription: `T set RPC attempts value`,
-				Description:         `T set RPC attempts value`,
-				Optional:            true,
-			},
-			"add": schema.Int32Attribute{
-				MarkdownDescription: `Add RPC attempts value`,
-				Description:         `Add RPC attempts value`,
-				Optional:            true,
-			},
-			"delete": schema.Int32Attribute{
-				MarkdownDescription: `Delete RPC attempts value`,
-				Description:         `Delete RPC attempts value`,
-				Optional:            true,
-			},
-			"commit_or_revert": schema.Int32Attribute{
-				MarkdownDescription: `Commit or revert operation attempts configuration`,
-				Description:         `Commit or revert operation attempts configuration`,
-				Optional:            true,
-			},
-		},
-	}
 )
 
 type SystemTimeoutsModel struct {
@@ -87,14 +55,6 @@ type SystemTimeoutsModel struct {
 	AddTimeout            types.String `tfsdk:"add"`
 	DeleteTimeout         types.String `tfsdk:"delete"`
 	CommitOrRevertTimeout types.String `tfsdk:"commit_or_revert"`
-}
-
-type SystemAttemptsModel struct {
-	GetAllAttempts         types.Int32 `tfsdk:"get_all"`
-	TSetAttempts           types.Int32 `tfsdk:"t_set"`
-	AddAttempts            types.Int32 `tfsdk:"add"`
-	DeleteAttempts         types.Int32 `tfsdk:"delete"`
-	CommitOrRevertAttempts types.Int32 `tfsdk:"commit_or_revert"`
 }
 
 type systemModel struct {

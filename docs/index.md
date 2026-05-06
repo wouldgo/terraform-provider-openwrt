@@ -25,11 +25,6 @@ provider "openwrt" {
       install_packages = "4m"
     }
   }
-  api_attempts = {
-    opkg = {
-      install_packages = 4
-    }
-  }
 }
 
 resource "openwrt_opkg" "wanted_packages" {
@@ -58,69 +53,10 @@ EOT
 
 ### Optional
 
-- `api_attempts` (Attributes) Attempts configuration for each RPC calls. The main purpose of this optional configuration is to overcome the timeout of the luci API because of the limited resources (e.g. during package installation) or the restard of luci because of related packages installed via the provider (see [below for nested schema](#nestedatt--api_attempts))
 - `api_timeouts` (Attributes) Timeout configuration for the specific RPC calls. The main purpose of this optional configuration is to fine tune the default timeouts for longer API interaction (e.g. update packages, list packages, ...) (see [below for nested schema](#nestedatt--api_timeouts))
 - `password` (String) The URL of the JSON RPC API. Optionally OPENWRT_PASSWORD env variable can be set and used to specify the password. One between this attribute or the env variable must be set
 - `remote` (String) The username of the admin account. Optionally OPENWRT_REMOTE env variable can be set and used to specify the remote url. One between this attribute or the env variable must be set
 - `user` (String) The password of the account. Optionally OPENWRT_USER env variable can be set and used to specify the user. One between this attribute or the env variable must be set
-
-<a id="nestedatt--api_attempts"></a>
-### Nested Schema for `api_attempts`
-
-Optional:
-
-- `fs` (Attributes) Filesystem operations attempts configuration (see [below for nested schema](#nestedatt--api_attempts--fs))
-- `opkg` (Attributes) Opkg operations attempts configuration (see [below for nested schema](#nestedatt--api_attempts--opkg))
-- `service` (Attributes) Service operations attempts configuration (see [below for nested schema](#nestedatt--api_attempts--service))
-- `uci` (Attributes) Uci operations attempts configuration (see [below for nested schema](#nestedatt--api_attempts--uci))
-
-<a id="nestedatt--api_attempts--fs"></a>
-### Nested Schema for `api_attempts.fs`
-
-Optional:
-
-- `read_file` (Number) Read file RPC attempts value
-- `remove_file` (Number) Remove file RPC attempts value
-- `write_file` (Number) Write file RPC attempts value
-
-
-<a id="nestedatt--api_attempts--opkg"></a>
-### Nested Schema for `api_attempts.opkg`
-
-Optional:
-
-- `check_package` (Number) Check package RPC attempts value
-- `install_packages` (Number) Install packages RPC attempts value
-- `remove_packages` (Number) Remove packages RPC attempts value
-- `update_packages` (Number) Update packages RPC attempts value
-
-
-<a id="nestedatt--api_attempts--service"></a>
-### Nested Schema for `api_attempts.service`
-
-Optional:
-
-- `disable_service` (Number) Disable service RPC attempts value
-- `enable_service` (Number) Enable service RPC attempts value
-- `is_enabled` (Number) Is enabled service RPC attempts value
-- `list_services` (Number) List services RPC attempts value
-- `restart_service` (Number) Restart service RPC attempts value
-- `start_service` (Number) Start service RPC attempts value
-- `stop_sevice` (Number) Stop service RPC attempts value
-
-
-<a id="nestedatt--api_attempts--uci"></a>
-### Nested Schema for `api_attempts.uci`
-
-Optional:
-
-- `add` (Number) Add RPC attempts value
-- `commit_or_revert` (Number) Commit or revert operation attempts configuration
-- `delete` (Number) Delete RPC attempts value
-- `get_all` (Number) Get all RPC attempts value
-- `t_set` (Number) T set RPC attempts value
-
-
 
 <a id="nestedatt--api_timeouts"></a>
 ### Nested Schema for `api_timeouts`

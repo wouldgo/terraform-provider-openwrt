@@ -55,7 +55,6 @@ type OpenWRTProviderModel struct {
 	Remote   types.String `tfsdk:"remote"`
 
 	APITimeouts *TimeoutsModel `tfsdk:"api_timeouts"`
-	APIAttempts *AttemptsModel `tfsdk:"api_attempts"`
 }
 
 func (p *OpenWRTProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -101,17 +100,6 @@ The JSON RPC API requires a couple of packages to be used. Please see [Using the
 					"uci":     system.UciTimeoutSchemaAttribute,
 				},
 			},
-			"api_attempts": schema.SingleNestedAttribute{
-				MarkdownDescription: "Attempts configuration for each RPC calls. The main purpose of this optional configuration is to overcome the timeout of the luci API because of the limited resources (e.g. during package installation) or the restard of luci because of related packages installed via the provider",
-				Description:         "Attempts configuration for each RPC calls.",
-				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"fs":      fs.FsAttemptsSchemaAttribute,
-					"opkg":    opkg.OpkgAttemptsSchemaAttribute,
-					"service": service.ServiceAttemptsSchemaAttribute,
-					"uci":     system.UciAttemptsSchemaAttribute,
-				},
-			},
 		},
 	}
 }
@@ -139,12 +127,6 @@ func (p *OpenWRTProvider) Configure(ctx context.Context, req provider.ConfigureR
 		return
 	}
 
-	apiAttempts, err := parseAttempts(ctx, data.APIAttempts)
-	if err != nil {
-		resp.Diagnostics.AddError("failed to parse attempts", err.Error())
-		return
-	}
-
 	username, password := data.User.ValueString(), data.Password.ValueString()
 	if openWRTUserEnvSet && openWRTPasswordEnvSet {
 		username = openWRTUserEnv
@@ -157,7 +139,6 @@ func (p *OpenWRTProvider) Configure(ctx context.Context, req provider.ConfigureR
 		username,
 		password,
 		apiTimeouts,
-		apiAttempts,
 	)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to instantiate remote client", err.Error())

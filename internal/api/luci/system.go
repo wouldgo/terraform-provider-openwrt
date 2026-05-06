@@ -44,18 +44,9 @@ type SystemTimeouts interface {
 	CommitOrRevert() time.Duration
 }
 
-type SystemAttempts interface {
-	GetAll() int32
-	TSet() int32
-	Add() int32
-	Delete() int32
-	CommitOrRevert() int32
-}
-
 type system struct {
 	*api.BaseClient
 	timeouts SystemTimeouts
-	attempts SystemAttempts
 }
 
 type System struct {
@@ -96,7 +87,6 @@ func (s *system) GetAll(ctx context.Context, sections ...any) ([]System, error) 
 
 	thisCall, err := s.PrepareCall(
 		s.timeouts.GetAll(),
-		s.attempts.GetAll(),
 		uciRPC,
 		uciMethodGetAll,
 		sections...,
@@ -133,7 +123,6 @@ func (s *system) TSet(ctx context.Context, data any, section ...any) error {
 	section = append(section, data)
 	thisCall, err := s.PrepareCall(
 		s.timeouts.TSet(),
-		s.attempts.TSet(),
 		uciRPC,
 		uciMethodTSet,
 		section...,
@@ -149,7 +138,6 @@ func (s *system) Add(ctx context.Context, section ...any) (string, error) {
 	var zero string
 	thisCall, err := s.PrepareCall(
 		s.timeouts.Add(),
-		s.attempts.Add(),
 		uciRPC,
 		uciMethodAdd,
 		section...,
@@ -163,7 +151,6 @@ func (s *system) Add(ctx context.Context, section ...any) (string, error) {
 func (s *system) Delete(ctx context.Context, section ...any) error {
 	thisCall, err := s.PrepareCall(
 		s.timeouts.Delete(),
-		s.attempts.Delete(),
 		uciRPC,
 		uciMethodDelete,
 		section...,
@@ -178,7 +165,6 @@ func (s *system) Delete(ctx context.Context, section ...any) error {
 func (s *system) uciCommit(ctx context.Context, section ...any) error {
 	thisCall, err := s.PrepareCall(
 		s.timeouts.CommitOrRevert(),
-		s.attempts.CommitOrRevert(),
 		uciRPC,
 		uciMethodCommit,
 		section...,
@@ -200,7 +186,6 @@ func (s *system) uciCommit(ctx context.Context, section ...any) error {
 func (s *system) uciRevert(ctx context.Context, section ...any) error {
 	thisCall, err := s.PrepareCall(
 		s.timeouts.CommitOrRevert(),
-		s.attempts.CommitOrRevert(),
 		uciRPC,
 		uciMethodRevert,
 		section...,

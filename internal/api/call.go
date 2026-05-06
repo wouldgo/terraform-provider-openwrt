@@ -24,7 +24,6 @@ var (
 )
 
 type apiCall interface {
-	attemptsAmount() int32
 	timeoutAmount() time.Duration
 	slot() time.Duration
 	do(context.Context) (json.RawMessage, error)
@@ -40,14 +39,9 @@ type call struct {
 	authTimeout        time.Duration
 
 	currentURL  *url.URL
-	attempts    int32
 	timeout     time.Duration
 	rpc, method string
 	params      []any
-}
-
-func (c *call) attemptsAmount() int32 {
-	return c.attempts
 }
 
 func (c *call) timeoutAmount() time.Duration {
@@ -295,7 +289,7 @@ func APICall[V any](
 	)
 	errs := make([]error, 0, 10)
 
-	for attempt = 0; attempt < call.attemptsAmount(); attempt++ {
+	for attempt = 0; ; attempt++ {
 		rawMessage, err := call.do(ctx)
 		if err == nil {
 			toReturn, err := transformer.Transform(rawMessage)
@@ -309,22 +303,24 @@ func APICall[V any](
 
 		exp := attempt + 1
 		slotDuration := call.slot()
-		var maxWindow int64
+		var maxWindow uint32
 		if slotDuration > 0 {
-			maxWindow = max(int64(call.timeoutAmount()/slotDuration), 1)
+			maxWindow = max(uint32(call.timeoutAmount()/slotDuration), 1)
 		} else {
 			maxWindow = 1
 		}
-		windowSize := min(int64(1)<<exp, maxWindow)
-		k := rand.Int64N(windowSize)
+		candidateWindowSize := uint32(1) << exp
+		if candidateWindowSize == 0 {
+			candidateWindowSize = 1
+		}
+		windowSize := min(candidateWindowSize, maxWindow)
+		k := rand.Int64N(int64(windowSize))
 		backoffDuration := time.Duration(k) * call.slot()
 		select {
 		case <-ctx.Done():
-			return zero, fmt.Errorf("%w after %d attempts: %w", ctx.Err(), exp, errors.Join(errs...))
+			errs = appendErr(errs, ErrMaxAttemptReached)
+			return zero, fmt.Errorf("%w after %d attempts: %w", ctx.Err(), attempt, errors.Join(errs...))
 		case <-time.After(backoffDuration):
 		}
 	}
-
-	errs = appendErr(errs, ErrMaxAttemptReached)
-	return zero, errors.Join(errs...)
 }

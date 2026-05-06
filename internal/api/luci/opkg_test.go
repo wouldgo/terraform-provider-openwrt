@@ -27,7 +27,6 @@ func TestOpkgRPCs(t *testing.T) {
 	expectedVersion := "1.1.1-test"
 	expectedInstalled := true
 	timeouts := newMockTimeouts(2 * time.Second)
-	attempts := newMockAttempts(1)
 	mockedRoundTripper := opkgHappyPathMockedRoundTripper(
 		t,
 		expectedHost,
@@ -48,7 +47,6 @@ func TestOpkgRPCs(t *testing.T) {
 		expectedUsername,
 		expectedPassword,
 		timeouts,
-		attempts,
 	)
 	if err != nil {
 		t.Errorf("client get error %v", err)

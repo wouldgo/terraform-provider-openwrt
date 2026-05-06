@@ -40,13 +40,6 @@ type Timeouts interface {
 	Auth() time.Duration
 }
 
-type Attempts interface {
-	FsAttempts
-	OpkgAttempts
-	ServiceAttempts
-	SystemAttempts
-}
-
 type RPC interface {
 	FsFacade
 	OpkgFacade
@@ -55,7 +48,7 @@ type RPC interface {
 }
 
 type RPCFactory interface {
-	Get(ctx context.Context, url, username, password string, timeouts Timeouts, attempts Attempts) (RPC, error)
+	Get(ctx context.Context, url, username, password string, timeouts Timeouts) (RPC, error)
 }
 
 type rpcFactory struct {
@@ -68,7 +61,7 @@ func NewHTTPRPCFactory(httpClient *http.Client) (RPCFactory, error) {
 	}, nil
 }
 
-func (cf rpcFactory) Get(ctx context.Context, remoteBaseURL, username, password string, timeouts Timeouts, attempts Attempts) (RPC, error) {
+func (cf rpcFactory) Get(ctx context.Context, remoteBaseURL, username, password string, timeouts Timeouts) (RPC, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -96,25 +89,21 @@ func (cf rpcFactory) Get(ctx context.Context, remoteBaseURL, username, password 
 	fs := &fs{
 		baseClient,
 		timeouts,
-		attempts,
 	}
 
 	opkg := &opkg{
 		baseClient,
 		timeouts,
-		attempts,
 	}
 
 	service := &service{
 		baseClient,
 		timeouts,
-		attempts,
 	}
 
 	system := &system{
 		baseClient,
 		timeouts,
-		attempts,
 	}
 
 	return &rpc{

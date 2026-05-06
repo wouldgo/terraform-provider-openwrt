@@ -44,20 +44,9 @@ type ServiceTimeouts interface {
 	RestartService() time.Duration
 }
 
-type ServiceAttempts interface {
-	ListServices() int32
-	IsEnabled() int32
-	DisableService() int32
-	EnableService() int32
-	StartService() int32
-	StopSevice() int32
-	RestartService() int32
-}
-
 type service struct {
 	*api.BaseClient
 	timeouts ServiceTimeouts
-	attempts ServiceAttempts
 }
 
 type ServiceInfo struct {
@@ -68,7 +57,6 @@ type ServiceInfo struct {
 func (s *service) ListServices(ctx context.Context) ([]string, error) {
 	thisCall, err := s.PrepareCall(
 		s.timeouts.ListServices(),
-		s.attempts.ListServices(),
 		serviceRPC,
 		serviceMethodNames,
 	)
@@ -81,7 +69,6 @@ func (s *service) ListServices(ctx context.Context) ([]string, error) {
 func (s *service) IsEnabled(ctx context.Context, serviceName string) (bool, error) {
 	thisCall, err := s.PrepareCall(
 		s.timeouts.IsEnabled(),
-		s.attempts.IsEnabled(),
 		serviceRPC,
 		serviceMethodEnabled,
 		serviceName,
@@ -95,7 +82,6 @@ func (s *service) IsEnabled(ctx context.Context, serviceName string) (bool, erro
 func (s *service) DisableService(ctx context.Context, serviceName string) error {
 	thisCall, err := s.PrepareCall(
 		s.timeouts.DisableService(),
-		s.attempts.DisableService(),
 		serviceRPC,
 		serviceMethodDisable,
 		serviceName,
@@ -117,7 +103,6 @@ func (s *service) DisableService(ctx context.Context, serviceName string) error 
 func (s *service) EnableService(ctx context.Context, serviceName string) error {
 	thisCall, err := s.PrepareCall(
 		s.timeouts.EnableService(),
-		s.attempts.EnableService(),
 		serviceRPC,
 		serviceMethodEnable,
 		serviceName,
@@ -139,7 +124,6 @@ func (s *service) EnableService(ctx context.Context, serviceName string) error {
 func (s *service) StartService(ctx context.Context, serviceName string) error {
 	thisCall, err := s.PrepareCall(
 		s.timeouts.StartService(),
-		s.attempts.StartService(),
 		serviceRPC,
 		serviceMethodStart,
 		serviceName,
@@ -161,7 +145,6 @@ func (s *service) StartService(ctx context.Context, serviceName string) error {
 func (s *service) StopSevice(ctx context.Context, serviceName string) error {
 	thisCall, err := s.PrepareCall(
 		s.timeouts.StopSevice(),
-		s.attempts.StopSevice(),
 		serviceRPC,
 		serviceMethodStop,
 		serviceName,

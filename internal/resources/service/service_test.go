@@ -70,8 +70,8 @@ func TestAccService_CheckServiceEnabledIfOmitted(t *testing.T) {
 
 					rpcFactory.
 						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
-						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
+						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 							t.Logf("Get method called")
 							return theRPC, nil
 						}).
@@ -170,8 +170,8 @@ func TestAccService_CheckServiceEnable(t *testing.T) {
 
 			rpcFactory.
 				EXPECT().
-				Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
+				Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+				DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 					t.Logf("Get method called")
 					return theRPC, nil
 				}).
@@ -307,8 +307,8 @@ func TestAccService_CheckServiceDisable(t *testing.T) {
 
 			rpcFactory.
 				EXPECT().
-				Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
+				Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+				DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 					t.Logf("Get method called")
 					return theRPC, nil
 				}).
@@ -422,8 +422,8 @@ func TestAccService_CheckServiceEnableDisable(t *testing.T) {
 
 			rpcFactory.
 				EXPECT().
-				Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
+				Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+				DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 					t.Logf("Get method called")
 					return theRPC, nil
 				}).

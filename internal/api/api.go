@@ -19,8 +19,7 @@ var (
 	ErrRpcCommand    = errors.New("missing rpc command")
 	ErrRpcMethod     = errors.New("missing rpc method")
 
-	ErrNegativeAttempts = errors.New("attempts are negative")
-	ErrHTTPBodyRead     = errors.New("http request in error")
+	ErrHTTPBodyRead = errors.New("http request in error")
 
 	ErrAuth                 = errors.New("authencation in error")
 	ErrAuthTimeout          = errors.New("authentication timeout")
@@ -65,15 +64,11 @@ func NewBaseClient(
 
 func (b *BaseClient) PrepareCall(
 	timeout time.Duration,
-	attempts int32,
 	rpc, method string,
 	params ...any,
 ) (*call, error) {
 	if timeout == 0 {
 		return nil, ErrRpcTimeout
-	}
-	if attempts < 0 {
-		attempts = 0
 	}
 	if rpc == "" {
 		return nil, ErrRpcCommand
@@ -88,7 +83,6 @@ func (b *BaseClient) PrepareCall(
 		password:    b.password,
 		authTimeout: b.authTimeout,
 		currentURL:  b.remoteBaseURL,
-		attempts:    attempts,
 		timeout:     timeout,
 		rpc:         rpc,
 		method:      method,

@@ -22,14 +22,12 @@ import (
 var _ apiCall = (*mockedCall)(nil)
 
 type mockedCall struct {
-	attempts    int32
 	slotD       time.Duration
 	timeoutD    time.Duration
 	doFn        func(context.Context) (json.RawMessage, error)
 	doCallCount int
 }
 
-func (m *mockedCall) attemptsAmount() int32        { return m.attempts }
 func (m *mockedCall) timeoutAmount() time.Duration { return m.timeoutD }
 func (m *mockedCall) slot() time.Duration          { return m.slotD }
 func (m *mockedCall) do(ctx context.Context) (json.RawMessage, error) {
@@ -53,9 +51,8 @@ func (b *mockedTransformer[V]) Transform(json.RawMessage) (V, error) {
 	return b.transformRes, nil
 }
 
-func newMockedCall(attempts int32) *mockedCall {
+func newMockedCall() *mockedCall {
 	return &mockedCall{
-		attempts: attempts,
 		slotD:    0,
 		timeoutD: time.Second,
 	}
@@ -63,7 +60,7 @@ func newMockedCall(attempts int32) *mockedCall {
 
 func TestAPICall_SuccessOnFirstAttempt(t *testing.T) {
 	expected := "result"
-	mock := newMockedCall(1)
+	mock := newMockedCall()
 	mock.doFn = func(_ context.Context) (json.RawMessage, error) {
 		return json.RawMessage(`"result"`), nil
 	}
@@ -85,7 +82,7 @@ func TestAPICall_SuccessOnFirstAttempt(t *testing.T) {
 
 func TestAPICall_SuccessAfterAttempts(t *testing.T) {
 	callErr := errors.New("transient error")
-	mock := newMockedCall(3)
+	mock := newMockedCall()
 	mock.doFn = func(_ context.Context) (json.RawMessage, error) {
 		if mock.doCallCount < 3 {
 			return nil, callErr
@@ -106,37 +103,10 @@ func TestAPICall_SuccessAfterAttempts(t *testing.T) {
 	}
 }
 
-func TestAPICall_TransformerErrorAttempts(t *testing.T) {
-	transformErr := errors.New("bad payload")
-	mock := newMockedCall(3)
-	mock.doFn = func(_ context.Context) (json.RawMessage, error) {
-		return json.RawMessage(`"ok"`), nil
-	}
-	transformer := &mockedTransformer[string]{
-		transformInErr: true,
-		transformErr:   transformErr,
-	}
-
-	_, err := APICall(t.Context(), mock, transformer)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if !errors.Is(err, ErrMaxAttemptReached) {
-		t.Errorf("expected ErrMaxAttemptReached in error chain, got: %v", err)
-	}
-	if mock.doCallCount != 3 {
-		t.Errorf("do called %d times, want 3", mock.doCallCount)
-	}
-	if transformer.transformCallCount != 3 {
-		t.Errorf("Transform called %d times, want 3", transformer.transformCallCount)
-	}
-}
-
 func TestAPICall_ContextCancelledDuringBackoff(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
 	mock := &mockedCall{
-		attempts: 5,
 		slotD:    10 * time.Millisecond,
 		timeoutD: time.Second,
 	}
@@ -157,50 +127,11 @@ func TestAPICall_ContextCancelledDuringBackoff(t *testing.T) {
 	}
 }
 
-func TestAPICall_MaxAttemptsExhausted(t *testing.T) {
-	callErr := errors.New("always fails")
-	mock := newMockedCall(3)
-	mock.doFn = func(_ context.Context) (json.RawMessage, error) {
-		return nil, callErr
-	}
-	transformer := &mockedTransformer[string]{}
-
-	_, err := APICall(t.Context(), mock, transformer)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if !errors.Is(err, ErrMaxAttemptReached) {
-		t.Errorf("expected ErrMaxAttemptReached in error chain, got: %v", err)
-	}
-	if mock.doCallCount != 3 {
-		t.Errorf("do called %d times, want 3", mock.doCallCount)
-	}
-}
-
-func TestAPICall_ZeroAttempts(t *testing.T) {
-	mock := newMockedCall(0)
-	mock.doFn = func(_ context.Context) (json.RawMessage, error) {
-		return json.RawMessage(`"ok"`), nil
-	}
-	transformer := &mockedTransformer[string]{transformRes: "ok"}
-
-	_, err := APICall(t.Context(), mock, transformer)
-	if err == nil {
-		t.Fatal("expected error with zero attempts, got nil")
-	}
-	if !errors.Is(err, ErrMaxAttemptReached) {
-		t.Errorf("expected ErrMaxAttemptReached, got: %v", err)
-	}
-	if mock.doCallCount != 0 {
-		t.Errorf("do called %d times, want 0", mock.doCallCount)
-	}
-}
-
 func TestAPICall_ContextAlreadyCancelledOnEntry(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	mock := newMockedCall(3)
+	mock := newMockedCall()
 	mock.doFn = func(_ context.Context) (json.RawMessage, error) {
 		return nil, ctx.Err()
 	}
@@ -266,12 +197,11 @@ func TestNewBaseClient(t *testing.T) {
 
 func TestPrepareCall(t *testing.T) {
 	testCases := []struct {
-		desc     string
-		timeout  time.Duration
-		attempts int32
-		rpc      string
-		method   string
-		params   []any
+		desc    string
+		timeout time.Duration
+		rpc     string
+		method  string
+		params  []any
 
 		expectErr     bool
 		expectedError error
@@ -283,17 +213,8 @@ func TestPrepareCall(t *testing.T) {
 			expectedError: ErrRpcTimeout,
 		},
 		{
-			desc:      "negative attempts",
-			timeout:   time.Second,
-			attempts:  -1,
-			rpc:       "test",
-			method:    "m_test",
-			expectErr: false,
-		},
-		{
 			desc:          "no rpc",
 			timeout:       time.Second,
-			attempts:      0,
 			rpc:           "",
 			expectErr:     true,
 			expectedError: ErrRpcCommand,
@@ -301,7 +222,6 @@ func TestPrepareCall(t *testing.T) {
 		{
 			desc:          "no method",
 			timeout:       time.Second,
-			attempts:      0,
 			rpc:           "test",
 			method:        "",
 			expectErr:     true,
@@ -318,17 +238,13 @@ func TestPrepareCall(t *testing.T) {
 				10*time.Second,
 			)
 
-			ret, err := baseClient.PrepareCall(tC.timeout, tC.attempts, tC.rpc, tC.method, tC.params...)
+			_, err := baseClient.PrepareCall(tC.timeout, tC.rpc, tC.method, tC.params...)
 			if err != nil && !tC.expectErr {
 				t.Errorf("unexpected error raised: %s", err.Error())
 			} else if !errors.Is(err, tC.expectedError) {
 				t.Errorf(`expected error is different then returned error:
 error: %s
 expected: %s`, err.Error(), tC.expectedError.Error())
-			}
-
-			if err == nil && ret.attempts < 0 {
-				t.Errorf("attempts must be greater or equals to zero")
 			}
 		})
 	}
@@ -435,7 +351,6 @@ func TestCallAuth(t *testing.T) {
 		client:      mockedClient,
 		username:    expectedUsername,
 		password:    expectedPassword,
-		attempts:    1,
 		authTimeout: time.Second,
 		currentURL:  expectedHost,
 		rpc:         expectedRPC,
@@ -503,7 +418,6 @@ func TestCallAuthTimeout(t *testing.T) {
 		client:      mockedClient,
 		username:    expectedUsername,
 		password:    expectedPassword,
-		attempts:    1,
 		authTimeout: time.Second,
 		currentURL:  expectedHost,
 		rpc:         expectedRPC,
@@ -558,7 +472,6 @@ func TestCallAuthHTTPError(t *testing.T) {
 		client:      mockedClient,
 		username:    expectedUsername,
 		password:    expectedPassword,
-		attempts:    1,
 		authTimeout: time.Second,
 		currentURL:  expectedHost,
 		rpc:         expectedRPC,
@@ -617,7 +530,6 @@ func TestCallAuthHTTPFaultyResponse(t *testing.T) {
 		client:      mockedClient,
 		username:    expectedUsername,
 		password:    expectedPassword,
-		attempts:    1,
 		authTimeout: time.Second,
 		currentURL:  expectedHost,
 		rpc:         expectedRPC,

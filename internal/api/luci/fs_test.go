@@ -39,7 +39,7 @@ func TestFsRPCs(t *testing.T) {
 	)
 
 	timeouts := newMockTimeouts(2 * time.Second)
-	attempts := newMockAttempts(1)
+
 	clientFactory, _ := luci.NewHTTPRPCFactory(&http.Client{
 		Transport: mockedRoundTripper,
 	})
@@ -50,7 +50,6 @@ func TestFsRPCs(t *testing.T) {
 		expectedUsername,
 		expectedPassword,
 		timeouts,
-		attempts,
 	)
 	if err != nil {
 		t.Errorf("client get error %v", err)

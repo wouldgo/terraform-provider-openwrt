@@ -40,19 +40,10 @@ import (
 // (commented out) to profile actual backoff behaviour against a device.
 
 const (
-	// CI-friendly: slot = 5% of 200ms = 10ms → backoff windows are tiny.
 	ciTimeout     = 200 * time.Millisecond
 	ciAuthTimeout = 40 * time.Millisecond
 	ciActionHang  = 20 * time.Millisecond
 
-	// Real-hardware profiling (swap with the three lines above):
-	// ciTimeout     = 7 * time.Minute
-	// ciAuthTimeout = 40 * time.Second
-	// ciActionHang  = 2 * time.Minute
-
-	testAttempts int32 = 30
-
-	// Phase boundary indices (0-indexed attempt number).
 	phaseActionHangAttempt = 0
 	phase502AuthStart      = 1
 	phase502AuthEnd        = 7
@@ -149,7 +140,6 @@ func TestAPICall_LuciReloadScenario(t *testing.T) {
 		password:    "test",
 		authTimeout: ciAuthTimeout,
 		currentURL:  baseURL,
-		attempts:    testAttempts,
 		timeout:     ciTimeout,
 		rpc:         "sys",
 		method:      "hostname",
@@ -191,14 +181,13 @@ func TestAPICall_LuciReloadScenario(t *testing.T) {
 	t.Logf("%d", attemptIdx.Load())
 }
 
-// countingCall wraps a real *call, delegating everything and incrementing the
+// countingCall wraps a *call, delegating everything and incrementing the
 // atomic counter after each do() so RoundTripFunc reads the right attempt index.
 type countingCall struct {
 	inner   *call
 	counter *atomic.Int32
 }
 
-func (cc *countingCall) attemptsAmount() int32        { return cc.inner.attemptsAmount() }
 func (cc *countingCall) timeoutAmount() time.Duration { return cc.inner.timeoutAmount() }
 func (cc *countingCall) slot() time.Duration          { return cc.inner.slot() }
 func (cc *countingCall) do(ctx context.Context) (json.RawMessage, error) {

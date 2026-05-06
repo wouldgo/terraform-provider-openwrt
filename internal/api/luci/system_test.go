@@ -32,7 +32,6 @@ func TestSystemRPCs(t *testing.T) {
 		expectedSection,
 	)
 	timeouts := newMockTimeouts(2 * time.Second)
-	attempts := newMockAttempts(1)
 	clientFactory, _ := luci.NewHTTPRPCFactory(&http.Client{
 		Transport: mockedRoundTripper,
 	})
@@ -43,7 +42,6 @@ func TestSystemRPCs(t *testing.T) {
 		expectedUsername,
 		expectedPassword,
 		timeouts,
-		attempts,
 	)
 	if err != nil {
 		t.Errorf("client get error %v", err)

@@ -29,8 +29,8 @@ func prepareMockProvider(
 ) {
 	rpcFactory.
 		EXPECT().
-		Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
+		Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+		DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 			t.Logf("Get method called")
 			return theRPC, nil
 		}).
@@ -461,8 +461,8 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 				PreConfig: func() {
 					rpcFactory.
 						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
-						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
+						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 							t.Logf("Get method called")
 							return nil, luci.ErrMissingRemoteBaseURL
 						}).
@@ -486,8 +486,8 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 
 					rpcFactory.
 						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
-						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
+						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 							t.Logf("Get method called")
 							return theRPC, nil
 						}).
@@ -520,8 +520,8 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 
 					rpcFactory.
 						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
-						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
+						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 							t.Logf("Get method called")
 							return theRPC, nil
 						}).
@@ -698,8 +698,8 @@ func TestAccOpkg_CheckPackageInUpdateIsFailing(t *testing.T) {
 
 					rpcFactory.
 						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any(), gomock.Any()).
-						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts, _ luci.Attempts) (luci.RPC, error) {
+						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 							t.Logf("Get method called")
 							return theRPC, nil
 						}).
