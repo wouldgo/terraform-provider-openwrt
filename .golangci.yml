@@ -1,7 +1,10 @@
 # Defines the configuration version.
 # The only possible value is "2".
 version: "2"
+# Options for analysis running.
 linters:
+  enable:
+    - gosec
   exclusions:
     generated: lax
     warn-unused: true
@@ -12,7 +15,7 @@ linters:
         linters:
           - unused
           - errcheck
-# Options for analysis running.
+          - gosec
 run:
   # Timeout for total work, e.g. 30s, 5m, 5m30s.
   # If the value is lower or equal to 0, the timeout is disabled.

@@ -30,8 +30,8 @@ type RPCRequest struct {
 }
 
 type RPCResponse struct {
-	Result *json.RawMessage `json:"result"`
-	Error  *struct {
+	Result json.RawMessage `json:"result"`
+	Error  struct {
 		Code    float64 `json:"code"`
 		Message string  `json:"message"`
 	} `json:"error"`

@@ -3,6 +3,8 @@ OUT := $(shell pwd)/_out
 
 EXCLUDED_PACKAGES := \
 	github.com/foxboron/terraform-provider-openwrt \
+	github.com/foxboron/terraform-provider-openwrt/internal/api/luci \
+	github.com/foxboron/terraform-provider-openwrt/internal/api/testutil \
 	github.com/foxboron/terraform-provider-openwrt/mocks
 
 PACKAGES := $(shell go list ./... | grep -Fvx -f <(printf '%s\n' $(EXCLUDED_PACKAGES)))

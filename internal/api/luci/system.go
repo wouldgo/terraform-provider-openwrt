@@ -5,22 +5,7 @@ package luci
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"time"
-
-	"github.com/foxboron/terraform-provider-openwrt/internal/api"
-)
-
-const (
-	uciRPC          = "uci"
-	uciMethodGetAll = "get_all"
-	uciMethodTSet   = "tset"
-	uciMethodAdd    = "add"
-	uciMethodDelete = "delete"
-	uciMethodCommit = "commit"
-	uciMethodRevert = "revert"
 )
 
 type SystemFacade interface {
@@ -32,21 +17,12 @@ type SystemFacade interface {
 	CommitOrRevert(ctx context.Context, section ...any) error
 }
 
-var (
-	_ SystemFacade = (*system)(nil)
-)
-
 type SystemTimeouts interface {
 	GetAll() time.Duration
 	TSet() time.Duration
 	Add() time.Duration
 	Delete() time.Duration
 	CommitOrRevert() time.Duration
-}
-
-type system struct {
-	*api.BaseClient
-	timeouts SystemTimeouts
 }
 
 type System struct {
@@ -78,161 +54,4 @@ type System struct {
 	ZoneName        string `json:"zonename,omitzero"`
 	ZramCompAlgo    string `json:"zram_comp_algo,omitzero"`
 	ZramSizeMb      string `json:"zram_size_mb,omitzero"`
-}
-
-func (s *system) GetAll(ctx context.Context, sections ...any) ([]System, error) {
-	if len(sections) == 0 {
-		return nil, fmt.Errorf("no sections specified")
-	}
-
-	thisCall, err := s.PrepareCall(
-		s.timeouts.GetAll(),
-		uciRPC,
-		uciMethodGetAll,
-		sections...,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return api.APICall(ctx, thisCall, systemSliceTransformer{
-		sections: sections,
-	})
-}
-
-func (s *system) GetSystem(ctx context.Context) (System, error) {
-	var zero System
-	result, err := s.GetAll(ctx, "system")
-	if err != nil {
-		return zero, err
-	}
-
-	for _, aResult := range result {
-		if aResult.Anonymous && aResult.Type == "system" {
-			return aResult, nil
-		}
-	}
-
-	return zero, fmt.Errorf("system section not found")
-}
-
-func (s *system) TSet(ctx context.Context, data any, section ...any) error {
-	data, err := purgeFields(&data)
-	if err != nil {
-		return err
-	}
-	section = append(section, data)
-	thisCall, err := s.PrepareCall(
-		s.timeouts.TSet(),
-		uciRPC,
-		uciMethodTSet,
-		section...,
-	)
-	if err != nil {
-		return err
-	}
-	_, err = api.APICall(ctx, thisCall, ignoreOutput{})
-	return err
-}
-
-func (s *system) Add(ctx context.Context, section ...any) (string, error) {
-	var zero string
-	thisCall, err := s.PrepareCall(
-		s.timeouts.Add(),
-		uciRPC,
-		uciMethodAdd,
-		section...,
-	)
-	if err != nil {
-		return zero, err
-	}
-	return api.APICall(ctx, thisCall, stringTransformer{})
-}
-
-func (s *system) Delete(ctx context.Context, section ...any) error {
-	thisCall, err := s.PrepareCall(
-		s.timeouts.Delete(),
-		uciRPC,
-		uciMethodDelete,
-		section...,
-	)
-	if err != nil {
-		return err
-	}
-	_, err = api.APICall(ctx, thisCall, ignoreOutput{})
-	return err
-}
-
-func (s *system) uciCommit(ctx context.Context, section ...any) error {
-	thisCall, err := s.PrepareCall(
-		s.timeouts.CommitOrRevert(),
-		uciRPC,
-		uciMethodCommit,
-		section...,
-	)
-	if err != nil {
-		return err
-	}
-	result, err := api.APICall(ctx, thisCall, booleanTransformer{})
-	if err != nil {
-		return fmt.Errorf("uci commit call ko: %w", err)
-	}
-
-	if !result {
-		return fmt.Errorf("uci commit not ok")
-	}
-	return err
-}
-
-func (s *system) uciRevert(ctx context.Context, section ...any) error {
-	thisCall, err := s.PrepareCall(
-		s.timeouts.CommitOrRevert(),
-		uciRPC,
-		uciMethodRevert,
-		section...,
-	)
-	if err != nil {
-		return err
-	}
-	result, err := api.APICall(ctx, thisCall, booleanTransformer{})
-	if err != nil {
-		return fmt.Errorf("uci commit call ko: %w", err)
-	}
-
-	if !result {
-		return fmt.Errorf("uci revert not ok")
-	}
-	return err
-}
-
-func (s *system) CommitOrRevert(ctx context.Context, section ...any) error {
-	toReturn := make([]error, 0, 2)
-	err := s.uciCommit(ctx, section...)
-	if err != nil {
-		toReturn = append(toReturn, fmt.Errorf("failed to commit config %q: %w", section, err))
-		err = s.uciRevert(ctx, section...)
-		if err != nil {
-			toReturn = append(toReturn, fmt.Errorf("failed to revert config %q: %w", section, err))
-		}
-	}
-
-	if len(toReturn) > 0 {
-		return errors.Join(toReturn...)
-	}
-	return nil
-}
-
-// Purge the sections from the anonymous things
-func purgeFields(d any) (any, error) {
-	b, err := json.Marshal(d)
-	if err != nil {
-		return nil, err
-	}
-	var objmap map[string]json.RawMessage
-	if err := json.Unmarshal(b, &objmap); err != nil {
-		return nil, err
-	}
-	delete(objmap, ".name")
-	delete(objmap, ".anonymous")
-	delete(objmap, ".type")
-	return objmap, nil
 }

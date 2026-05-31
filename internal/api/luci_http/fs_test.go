@@ -1,7 +1,7 @@
 // Copyright https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors 2025, 2026
 // SPDX-License-Identifier: MPL-2.0
 
-package luci_test
+package luci_http_test
 
 import (
 	"bytes"
@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
+	"github.com/foxboron/terraform-provider-openwrt/internal/api/luci_http"
 	"github.com/foxboron/terraform-provider-openwrt/internal/api/testutil"
 )
 
@@ -40,9 +41,7 @@ func TestFsRPCs(t *testing.T) {
 
 	timeouts := newMockTimeouts(2 * time.Second)
 
-	clientFactory, _ := luci.NewHTTPRPCFactory(&http.Client{
-		Transport: mockedRoundTripper,
-	})
+	clientFactory, _ := luci_http.NewHTTPRPCFactory(mockedRoundTripper, nil)
 
 	client, err := clientFactory.Get(
 		t.Context(),
@@ -143,8 +142,7 @@ func fsHappyPathMockedRoundTripper(
 					}
 
 					rpcResp = testutil.RPCResponse{
-						Result: &fakeRawResult,
-						Error:  nil,
+						Result: fakeRawResult,
 					}
 					responseBody, err := json.Marshal(&rpcResp)
 					if err != nil {
@@ -168,8 +166,7 @@ func fsHappyPathMockedRoundTripper(
 					raw := json.RawMessage("\"" + fileContentEncoded + "\"")
 
 					rpcResp = testutil.RPCResponse{
-						Result: &raw,
-						Error:  nil,
+						Result: raw,
 					}
 					responseBody, err := json.Marshal(&rpcResp)
 					if err != nil {
@@ -191,8 +188,7 @@ func fsHappyPathMockedRoundTripper(
 					}
 
 					rpcResp = testutil.RPCResponse{
-						Result: &fakeRawResult,
-						Error:  nil,
+						Result: fakeRawResult,
 					}
 					responseBody, err := json.Marshal(&rpcResp)
 					if err != nil {

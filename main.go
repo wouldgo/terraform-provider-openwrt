@@ -7,9 +7,8 @@ import (
 	"context"
 	"flag"
 	"log"
-	"net/http"
 
-	rpc "github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
+	"github.com/foxboron/terraform-provider-openwrt/internal/api/luci_http"
 	"github.com/foxboron/terraform-provider-openwrt/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
@@ -29,7 +28,7 @@ func main() {
 		Debug:   debug,
 	}
 
-	clientFactory, err := rpc.NewHTTPRPCFactory(&http.Client{})
+	clientFactory, err := luci_http.NewHTTPRPCFactory(nil, nil)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

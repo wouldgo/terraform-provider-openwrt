@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/foxboron/terraform-provider-openwrt/internal/api"
 	"github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
+	this_http "github.com/foxboron/terraform-provider-openwrt/internal/http"
 	"github.com/foxboron/terraform-provider-openwrt/internal/testutil"
 
 	"github.com/foxboron/terraform-provider-openwrt/mocks"
@@ -498,7 +498,7 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 						UpdatePackages(gomock.Any()).
 						DoAndReturn(func(ctx context.Context) error {
 							t.Logf("UpdatePackages method called")
-							return api.ErrMarshal
+							return this_http.ErrMarshal
 						}).
 						Times(1)
 				},
@@ -511,7 +511,7 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 			  resource "openwrt_opkg" "test" {
 			    packages = ["curl"]
 			  }`,
-				ExpectError: regexp.MustCompile(api.ErrMarshal.Error()),
+				ExpectError: regexp.MustCompile(this_http.ErrMarshal.Error()),
 			},
 
 			{
