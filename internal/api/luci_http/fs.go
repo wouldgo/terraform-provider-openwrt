@@ -28,49 +28,42 @@ type fs struct {
 }
 
 func (c *fs) Writefile(ctx context.Context, path string, data []byte) error {
-	rawResult, err := c.Call(
+	_, err := http.Call(
 		ctx,
+		c.BaseClient,
 		c.timeouts.WriteFile(),
 		fsRPC,
 		fsMethodWrite,
+		http_transformers.IgnoreOutputTransformer,
 		path,
 		data,
 	)
-	if err != nil {
-		return err
-	}
 
-	_, err = http_transformers.IgnoreOutputTransformer.Transform(rawResult)
 	return err
 }
 
 func (c *fs) ReadFile(ctx context.Context, path string) ([]byte, error) {
-	rawResult, err := c.Call(
+	return http.Call(
 		ctx,
+		c.BaseClient,
 		c.timeouts.ReadFile(),
 		fsRPC,
 		fsMethodRead,
+		http_transformers.Base64StringerTransformer,
 		path,
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	return http_transformers.Base64StringerTransformer.Transform(rawResult)
 }
 
 func (c *fs) RemoveFile(ctx context.Context, path string) error {
-	rawResult, err := c.Call(
+	_, err := http.Call(
 		ctx,
+		c.BaseClient,
 		c.timeouts.RemoveFile(),
 		fsRPC,
 		fsMethodRemove,
+		http_transformers.IgnoreOutputTransformer,
 		path,
 	)
-	if err != nil {
-		return err
-	}
 
-	_, err = http_transformers.IgnoreOutputTransformer.Transform(rawResult)
 	return err
 }

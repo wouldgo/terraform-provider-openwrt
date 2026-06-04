@@ -29,37 +29,30 @@ type opkg struct {
 }
 
 func (c *opkg) UpdatePackages(ctx context.Context) error {
-	rawResult, err := c.Call(
+	_, err := http.Call(
 		ctx,
+		c.BaseClient,
 		c.timeouts.UpdatePackages(),
 		opkgfRPC,
 		opkgMethodUpdate,
+		http_transformers.OpkgErrCheckerTransformer,
 	)
-	if err != nil {
-		return err
-	}
 
-	_, err = http_transformers.OpkgErrCheckerTransformer.Transform(rawResult)
 	return err
 }
 
 func (c *opkg) CheckPackage(ctx context.Context, pack string) (luci.PackageInfo, error) {
-	var zero luci.PackageInfo
-	rawResult, err := c.Call(
+	return http.Call(
 		ctx,
+		c.BaseClient,
 		c.timeouts.CheckPackage(),
 		opkgfRPC,
 		opkgMethodStatus,
+		http_transformers.OpkgPackager{
+			Package: pack,
+		},
 		pack,
 	)
-	if err != nil {
-		return zero, err
-	}
-
-	opkgPackagerTransformer := http_transformers.OpkgPackager{
-		Package: pack,
-	}
-	return opkgPackagerTransformer.Transform(rawResult)
 }
 
 func (c *opkg) InstallPackages(ctx context.Context, packages ...string) error {
@@ -73,18 +66,19 @@ func (c *opkg) InstallPackages(ctx context.Context, packages ...string) error {
 		toApi = append(toApi, aPackage)
 	}
 
-	rawResult, err := c.Call(
+	_, err := http.Call(
 		ctx,
+		c.BaseClient,
 		c.timeouts.InstallPackages(),
 		opkgfRPC,
 		opkgMethodInstall,
+		http_transformers.OpkgErrCheckerTransformer,
 		toApi...,
 	)
 	if err != nil {
 		return err
 	}
 
-	_, err = http_transformers.OpkgErrCheckerTransformer.Transform(rawResult)
 	return err
 }
 
@@ -99,17 +93,15 @@ func (c *opkg) RemovePackages(ctx context.Context, packages ...string) error {
 		toApi = append(toApi, aPackage)
 	}
 
-	rawResult, err := c.Call(
+	_, err := http.Call(
 		ctx,
+		c.BaseClient,
 		c.timeouts.RemovePackages(),
 		opkgfRPC,
 		opkgMethodRemove,
+		http_transformers.OpkgErrCheckerTransformer,
 		toApi...,
 	)
-	if err != nil {
-		return err
-	}
 
-	_, err = http_transformers.OpkgErrCheckerTransformer.Transform(rawResult)
 	return err
 }

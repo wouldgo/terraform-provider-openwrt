@@ -32,47 +32,39 @@ type service struct {
 }
 
 func (s *service) ListServices(ctx context.Context) ([]string, error) {
-	rawResult, err := s.Call(
+	return http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.ListServices(),
 		serviceRPC,
 		serviceMethodNames,
+		http_transformers.StringSliceTransformer,
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	return http_transformers.StringSliceTransformer.Transform(rawResult)
 }
 
 func (s *service) IsEnabled(ctx context.Context, serviceName string) (bool, error) {
-	rawResult, err := s.Call(
+	return http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.IsEnabled(),
 		serviceRPC,
 		serviceMethodEnabled,
+		http_transformers.BooleanTransformer,
 		serviceName,
 	)
-	if err != nil {
-		return false, err
-	}
-
-	return http_transformers.BooleanTransformer.Transform(rawResult)
 }
 
 func (s *service) DisableService(ctx context.Context, serviceName string) error {
-	rawResult, err := s.Call(
+	result, err := http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.DisableService(),
 		serviceRPC,
 		serviceMethodDisable,
+		http_transformers.BooleanTransformer,
 		serviceName,
 	)
-	if err != nil {
-		return err
-	}
 
-	result, err := http_transformers.BooleanTransformer.Transform(rawResult)
 	if err != nil {
 		return fmt.Errorf("unable to disable service %s: %w", serviceName, err)
 	}
@@ -84,18 +76,15 @@ func (s *service) DisableService(ctx context.Context, serviceName string) error 
 }
 
 func (s *service) EnableService(ctx context.Context, serviceName string) error {
-	rawResult, err := s.Call(
+	result, err := http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.EnableService(),
 		serviceRPC,
 		serviceMethodEnable,
+		http_transformers.BooleanTransformer,
 		serviceName,
 	)
-	if err != nil {
-		return err
-	}
-
-	result, err := http_transformers.BooleanTransformer.Transform(rawResult)
 	if err != nil {
 		return fmt.Errorf("unable to enable service %s: %w", serviceName, err)
 	}
@@ -107,18 +96,15 @@ func (s *service) EnableService(ctx context.Context, serviceName string) error {
 }
 
 func (s *service) StartService(ctx context.Context, serviceName string) error {
-	rawResult, err := s.Call(
+	result, err := http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.StartService(),
 		serviceRPC,
 		serviceMethodStart,
+		http_transformers.BooleanTransformer,
 		serviceName,
 	)
-	if err != nil {
-		return err
-	}
-
-	result, err := http_transformers.BooleanTransformer.Transform(rawResult)
 	if err != nil {
 		return fmt.Errorf("unable to start service %s: %w", serviceName, err)
 	}
@@ -130,18 +116,15 @@ func (s *service) StartService(ctx context.Context, serviceName string) error {
 }
 
 func (s *service) StopSevice(ctx context.Context, serviceName string) error {
-	rawResult, err := s.Call(
+	result, err := http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.StopSevice(),
 		serviceRPC,
 		serviceMethodStop,
+		http_transformers.BooleanTransformer,
 		serviceName,
 	)
-	if err != nil {
-		return err
-	}
-
-	result, err := http_transformers.BooleanTransformer.Transform(rawResult)
 	if err != nil {
 		return fmt.Errorf("unable to stop service %s: %w", serviceName, err)
 	}

@@ -5,9 +5,16 @@ package http_middlewares
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
+)
+
+var (
+	ErrNotClonable = errors.New("value is not clonable")
 )
 
 type RoundTripperFunc func(*http.Request) (*http.Response, error)
@@ -23,6 +30,39 @@ func CloneURL(u *url.URL) *url.URL {
 
 	c := *u
 	return &c
+}
+
+func Clone[T *http.Request | *http.Response](val T) (T, error) {
+	var zero T
+	switch v := any(val).(type) {
+	case *http.Request:
+		req, err := CloneRequest(v)
+		return any(req).(T), err
+	case *http.Response:
+		resp, err := cloneResponse(v)
+		return any(resp).(T), err
+	default:
+		return zero, errors.Join(
+			fmt.Errorf("%s", reflect.ValueOf(v).String()),
+			ErrNotClonable,
+		)
+	}
+}
+
+func cloneResponse(resp *http.Response) (*http.Response, error) {
+	if resp.Body == nil || resp.Body == http.NoBody {
+		return resp, nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	resp.Body = io.NopCloser(bytes.NewReader(body))
+
+	cloned := *resp // shallow copy of the struct
+	cloned.Body = io.NopCloser(bytes.NewReader(body))
+	return &cloned, nil
 }
 
 func CloneRequest(req *http.Request) (*http.Request, error) {

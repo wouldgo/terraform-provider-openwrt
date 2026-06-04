@@ -37,7 +37,9 @@ func TestServiceRPCs(t *testing.T) {
 	)
 
 	timeouts := newMockTimeouts(2 * time.Second)
-	clientFactory, _ := luci_http.NewHTTPRPCFactory(mockedRoundTripper, nil)
+	clientFactory, _ := luci_http.NewHTTPRPCFactory(luci_http.HTTPRPCConfiguration{
+		RoundTripper: mockedRoundTripper,
+	})
 
 	client, err := clientFactory.Get(
 		t.Context(),

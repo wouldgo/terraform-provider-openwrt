@@ -19,6 +19,11 @@ var (
 	_ luci.RPC        = (*httpRPC)(nil)
 )
 
+type HTTPRPCConfiguration struct {
+	RoundTripper            http.RoundTripper
+	BackoffDurationStrategy this_http.BackoffDurationStrategy
+}
+
 type httpRPCFactory struct {
 	dynamicTransport        *http_transport.DynamicTransport
 	backoffDurationStrategy this_http.BackoffDurationStrategy
@@ -33,10 +38,9 @@ type httpRPC struct {
 }
 
 func NewHTTPRPCFactory(
-	roundTripper http.RoundTripper,
-	backoffDurationStrategy this_http.BackoffDurationStrategy,
+	httpRPCConfiguration HTTPRPCConfiguration,
 ) (luci.RPCFactory, error) {
-	dt, err := http_transport.NewDynamicTransport(roundTripper)
+	dt, err := http_transport.NewDynamicTransport(httpRPCConfiguration.RoundTripper)
 	if err != nil {
 		return nil, fmt.Errorf("error on creating transport: %w", err)
 	}
@@ -46,7 +50,7 @@ func NewHTTPRPCFactory(
 	}
 	return &httpRPCFactory{
 		dynamicTransport:        dt,
-		backoffDurationStrategy: backoffDurationStrategy,
+		backoffDurationStrategy: httpRPCConfiguration.BackoffDurationStrategy,
 		httpClient:              httpClient,
 	}, nil
 }

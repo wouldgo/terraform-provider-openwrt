@@ -38,21 +38,17 @@ func (s *system) GetAll(ctx context.Context, sections ...any) ([]luci.System, er
 		return nil, fmt.Errorf("no sections specified")
 	}
 
-	rawResult, err := s.Call(
+	return http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.GetAll(),
 		uciRPC,
 		uciMethodGetAll,
+		http_transformers.SystemSlice{
+			Sections: sections,
+		},
 		sections...,
 	)
-	if err != nil {
-		return nil, err
-	}
-
-	systemSliceTransformer := http_transformers.SystemSlice{
-		Sections: sections,
-	}
-	return systemSliceTransformer.Transform(rawResult)
 }
 
 func (s *system) GetSystem(ctx context.Context) (luci.System, error) {
@@ -77,66 +73,55 @@ func (s *system) TSet(ctx context.Context, data any, section ...any) error {
 		return err
 	}
 	section = append(section, data)
-	rawResult, err := s.Call(
+	_, err = http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.TSet(),
 		uciRPC,
 		uciMethodTSet,
+		http_transformers.IgnoreOutputTransformer,
 		section...,
 	)
-	if err != nil {
-		return err
-	}
 
-	_, err = http_transformers.IgnoreOutputTransformer.Transform(rawResult)
 	return err
 }
 
 func (s *system) Add(ctx context.Context, section ...any) (string, error) {
-	var zero string
-	rawResult, err := s.Call(
+	return http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.Add(),
 		uciRPC,
 		uciMethodAdd,
+		http_transformers.StringTransformer,
 		section...,
 	)
-	if err != nil {
-		return zero, err
-	}
-
-	return http_transformers.StringTransformer.Transform(rawResult)
 }
 
 func (s *system) Delete(ctx context.Context, section ...any) error {
-	rawResult, err := s.Call(
+	_, err := http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.Delete(),
 		uciRPC,
 		uciMethodDelete,
+		http_transformers.IgnoreOutputTransformer,
 		section...,
 	)
-	if err != nil {
-		return err
-	}
 
-	_, err = http_transformers.IgnoreOutputTransformer.Transform(rawResult)
 	return err
 }
 
 func (s *system) uciCommit(ctx context.Context, section ...any) error {
-	rawResult, err := s.Call(
+	result, err := http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.CommitOrRevert(),
 		uciRPC,
 		uciMethodCommit,
+		http_transformers.BooleanTransformer,
 		section...,
 	)
-	if err != nil {
-		return err
-	}
-
-	result, err := http_transformers.BooleanTransformer.Transform(rawResult)
 	if err != nil {
 		return errors.Join(luci.ErrExecutionFailure, fmt.Errorf("uci commit call ko: %w", err))
 	}
@@ -148,18 +133,15 @@ func (s *system) uciCommit(ctx context.Context, section ...any) error {
 }
 
 func (s *system) uciRevert(ctx context.Context, section ...any) error {
-	rawResult, err := s.Call(
+	result, err := http.Call(
 		ctx,
+		s.BaseClient,
 		s.timeouts.CommitOrRevert(),
 		uciRPC,
 		uciMethodRevert,
+		http_transformers.BooleanTransformer,
 		section...,
 	)
-	if err != nil {
-		return err
-	}
-
-	result, err := http_transformers.BooleanTransformer.Transform(rawResult)
 	if err != nil {
 		return errors.Join(luci.ErrExecutionFailure, fmt.Errorf("uci commit call ko: %w", err))
 	}

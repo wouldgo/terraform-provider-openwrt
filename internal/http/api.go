@@ -10,11 +10,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"time"
 
 	http_middlewares "github.com/foxboron/terraform-provider-openwrt/internal/http/middlewares"
+	http_transformers "github.com/foxboron/terraform-provider-openwrt/internal/http/transformers"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -86,19 +88,25 @@ func NewBaseClient(
 			MinBackOff: 100 * time.Millisecond,
 			MinRetries: 5,
 			MaxRetries: 13,
+			FadeEnd:    0.6,
 		}
+	} else {
+		baseClient.backoffDurationStrategy = backoffDurationStrategy
 	}
 	return baseClient, nil
 }
 
-func (b *BaseClient) Call(
+func Call[T any](
 	ctx context.Context,
+	b *BaseClient,
 	timeout time.Duration,
 	rpc, method string,
+	trans http_transformers.ApiDataTransformer[T],
 	params ...any,
-) (json.RawMessage, error) {
+) (T, error) {
+	var zero T
 	if err := ctx.Err(); err != nil {
-		return nil, errors.Join(err, ErrRpcTimeout)
+		return zero, errors.Join(err, ErrRpcTimeout)
 	}
 
 	req, err := prepareRequest(
@@ -109,14 +117,30 @@ func (b *BaseClient) Call(
 		params,
 	)
 	if err != nil {
-		return nil, err
+		return zero, err
 	}
 
-	resp, err := b.retry(ctx, timeout, req, rpc, method)
+	resp, err := retry(
+		ctx,
+		b,
+		timeout,
+		trans,
+		req,
+		rpc,
+		method,
+	)
 	if err != nil {
-		return nil, errors.Join(ErrRpcExecution, err)
+		return zero, errors.Join(ErrRpcExecution, err)
 	}
+	return resp, nil
+}
 
+func extractBodyContent[T any](
+	ctx context.Context,
+	trans http_transformers.ApiDataTransformer[T],
+	resp *http.Response,
+) (T, error) {
+	var zero T
 	defer func(resp *http.Response) {
 		err := resp.Body.Close()
 		if err != nil {
@@ -129,37 +153,40 @@ func (b *BaseClient) Call(
 	if resp.StatusCode != http.StatusOK {
 		errorResponse, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return nil, errors.Join(ErrHTTPBodyRead, fmt.Errorf("faulty error response read"))
+			return zero, errors.Join(ErrHTTPBodyRead, fmt.Errorf("faulty error response read"))
 		}
 
-		errResp := fmt.Errorf("request %s - %s replied with %d: %s", req.Method, b.remoteBaseURL.String(), resp.StatusCode, string(errorResponse))
+		errResp := fmt.Errorf("request %s - %s replied with %d: %s", resp.Request.Method, resp.Request.URL.String(), resp.StatusCode, string(errorResponse))
 
-		return nil, errors.Join(ErrHTTPRequestExecution, errResp)
+		return zero, errors.Join(ErrHTTPRequestExecution, errResp)
 	}
 
 	var responseBody jsonRPCResponseBody
-	if err = json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
-		return nil, errors.Join(ErrUnMarshal, err)
+	if err := json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
+		return zero, errors.Join(ErrUnMarshal, err)
 	}
 	if responseBody.Error != NoJSONRPCError {
-		return nil, errors.Join(ErrRpcExecution, responseBody.Error)
+		return zero, errors.Join(ErrRpcExecution, responseBody.Error)
 	}
 
 	if responseBody.Result == nil {
-		return nil, ErrEmptyResult
+		return zero, ErrEmptyResult
 	}
 
-	return responseBody.Result, nil
+	return trans.Transform(responseBody.Result)
 }
 
-func (b *BaseClient) retry(
+func retry[T any](
 	ctx context.Context,
+	b *BaseClient,
 	timeout time.Duration,
+	trans http_transformers.ApiDataTransformer[T],
 	req *http.Request,
 	rpc, method string,
-) (*http.Response, error) {
+) (T, error) {
+	var zero T
 	if err := ctx.Err(); err != nil {
-		return nil, errors.Join(err, ErrRpcTimeout)
+		return zero, errors.Join(err, ErrRpcTimeout)
 	}
 
 	innerCtx, cancel := context.WithTimeout(ctx, timeout)
@@ -171,19 +198,20 @@ func (b *BaseClient) retry(
 		totalIO            = 100 * time.Millisecond
 		attemptsDone int32 = 0
 		start              = time.Now()
+		ioErr        error
 	)
 
 	for attempt = 0; ; attempt++ {
 		clonedReq, err := http_middlewares.CloneRequest(req)
 		if err != nil {
-			return nil, err
+			return zero, err
 		}
 
 		ioStart := time.Now()
-		resp, err = b.Do(clonedReq)
+		resp, ioErr = b.Do(clonedReq)
 		ioElapsed := time.Since(ioStart)
-		if err != nil {
-			return nil, errors.Join(err, ErrTransport)
+		if ioErr != nil {
+			return zero, errors.Join(err, ErrTransport)
 		}
 
 		attemptsDone++
@@ -198,8 +226,22 @@ func (b *BaseClient) retry(
 			"responseTime": ioElapsed.String(),
 		}
 		if !isRetryable(resp.StatusCode) {
-			tflog.Info(innerCtx, "call completed", loggingData)
-			return resp, nil
+			data, ioErr := extractBodyContent(innerCtx, trans, resp)
+			if ioErr == nil {
+				tflog.Info(innerCtx, "call completed", loggingData)
+				return data, nil
+			} else {
+				loggingData = map[string]any{
+					"attempt":      attempt,
+					"rpc":          rpc,
+					"method":       method,
+					"statusCode":   resp.StatusCode,
+					"responseTime": ioElapsed.String(),
+
+					"error": ioErr.Error(),
+				}
+				tflog.Error(innerCtx, "extracting body content gives error", loggingData)
+			}
 		}
 
 		tflog.Info(innerCtx, "attempt failed", loggingData)
@@ -215,17 +257,19 @@ func (b *BaseClient) retry(
 
 		elapsed := time.Since(start)
 		backoffDuration := b.backoffDurationStrategy.NextBackoffDuration(innerCtx, elapsed, timeout, avgIO)
-		tflog.Debug(innerCtx, "backoff", map[string]any{
-			"attempt":    attempt,
+
+		backoffLoggingData := map[string]any{
 			"elapsed":    elapsed.String(),
 			"remaining":  (timeout - elapsed).String(),
 			"average IO": avgIO.String(),
 			"backoff":    backoffDuration.String(),
-		})
+		}
+		maps.Copy(backoffLoggingData, loggingData)
+		tflog.Debug(innerCtx, "backoff", backoffLoggingData)
 
 		select {
 		case <-innerCtx.Done():
-			return nil, fmt.Errorf("stopped after %d attempts: %w", attempt, ErrRetryDeadlineExceeded)
+			return zero, errors.Join(ErrRetryDeadlineExceeded, fmt.Errorf("stopped after %d attempts: %w", attempt, ioErr))
 		case <-time.After(backoffDuration):
 		}
 	}

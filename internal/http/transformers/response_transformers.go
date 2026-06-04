@@ -6,6 +6,7 @@ package http_transformers
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -14,6 +15,7 @@ import (
 )
 
 var (
+	ErrOpkgFailed                                                  = errors.New("okpg action in error")
 	IgnoreOutputTransformer   ApiDataTransformer[any]              = IgnoreOutput{}
 	Base64StringerTransformer ApiDataTransformer[[]byte]           = Base64Stringer{}
 	OpkgErrCheckerTransformer ApiDataTransformer[any]              = OpkgErrChecker{}
@@ -64,7 +66,7 @@ func (OpkgErrChecker) Transform(rawData json.RawMessage) (any, error) {
 	}
 
 	if retCasted != 0 {
-		return zero, fmt.Errorf("update packages returns %.0f", retCasted)
+		return zero, errors.Join(ErrOpkgFailed, fmt.Errorf("update packages returns %.0f", retCasted))
 	}
 	return zero, nil
 }

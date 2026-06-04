@@ -28,7 +28,7 @@ func main() {
 		Debug:   debug,
 	}
 
-	clientFactory, err := luci_http.NewHTTPRPCFactory(nil, nil)
+	clientFactory, err := luci_http.NewHTTPRPCFactory(luci_http.HTTPRPCConfiguration{})
 	if err != nil {
 		log.Fatal(err.Error())
 	}
