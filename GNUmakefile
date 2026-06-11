@@ -5,6 +5,10 @@ EXCLUDED_PACKAGES := \
 	github.com/foxboron/terraform-provider-openwrt \
 	github.com/foxboron/terraform-provider-openwrt/internal/api/luci \
 	github.com/foxboron/terraform-provider-openwrt/internal/api/testutil \
+	github.com/foxboron/terraform-provider-openwrt/internal/http/middlewares \
+	github.com/foxboron/terraform-provider-openwrt/internal/http/transformers \
+	github.com/foxboron/terraform-provider-openwrt/internal/http/transport \
+	github.com/foxboron/terraform-provider-openwrt/internal/provider \
 	github.com/foxboron/terraform-provider-openwrt/mocks
 
 PACKAGES := $(shell go list ./... | grep -Fvx -f <(printf '%s\n' $(EXCLUDED_PACKAGES)))

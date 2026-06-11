@@ -5,6 +5,7 @@ package luci_http_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
 	"github.com/foxboron/terraform-provider-openwrt/internal/api/luci_http"
 	"github.com/foxboron/terraform-provider-openwrt/internal/api/testutil"
+	internal_http "github.com/foxboron/terraform-provider-openwrt/internal/http"
 )
 
 func TestServiceRPCs(t *testing.T) {
@@ -26,7 +28,7 @@ func TestServiceRPCs(t *testing.T) {
 		expectedPassword := testutil.TestingData(t)
 	expectedServiceName := "my_service"
 	expectedServiceEnabled := true
-	mockedRoundTripper := serviceHappyPathMockedRoundTripper(
+	mockedRoundTripper := serviceMockedRoundTripper(
 		t,
 		expectedHost,
 		expectedUsername,
@@ -109,7 +111,7 @@ func TestServiceRPCs(t *testing.T) {
 		t.Errorf("service start service error: %v", err)
 	}
 
-	err = service.StopSevice(
+	err = service.StopService(
 		t.Context(),
 		expectedServiceName,
 	)
@@ -126,7 +128,92 @@ func TestServiceRPCs(t *testing.T) {
 	}
 }
 
-func serviceHappyPathMockedRoundTripper(
+func TestUnHappyServiceRPCs(t *testing.T) {
+	expectedHost,
+		expectedToken,
+		expectedUsername,
+		expectedPassword := testutil.TestingData(t)
+	expectedServiceName := "my_service"
+	expectedServiceEnabled := false
+	mockedRoundTripper := serviceMockedRoundTripper(
+		t,
+		expectedHost,
+		expectedUsername,
+		expectedPassword,
+		expectedToken,
+		expectedServiceName,
+		expectedServiceEnabled,
+	)
+
+	timeouts := newMockTimeouts(2 * time.Second)
+	clientFactory, _ := luci_http.NewHTTPRPCFactory(luci_http.HTTPRPCConfiguration{
+		RoundTripper: mockedRoundTripper,
+	})
+
+	client, err := clientFactory.Get(
+		t.Context(),
+		expectedHost.String(),
+		expectedUsername,
+		expectedPassword,
+		timeouts,
+	)
+	if err != nil {
+		t.Errorf("client get error %v", err)
+	}
+
+	service, ok := (client).(luci.ServiceFacade)
+	if !ok {
+		t.Fatalf("expected a luci.ServiceFacade")
+	}
+	alreadyCancelledCtx, cancel := context.WithCancel(t.Context())
+	cancel()
+	err = service.DisableService(alreadyCancelledCtx, expectedServiceName)
+	if err == nil || !errors.Is(err, internal_http.ErrRpcTimeout) {
+		t.Errorf("expected disable service in error with error %s, got %s", internal_http.ErrRpcTimeout, err)
+	}
+
+	err = service.DisableService(t.Context(), expectedServiceName)
+	if err == nil || !errors.Is(err, luci.ErrExecutionFailure) {
+		t.Errorf("expected disable service in error with error %s, got %s", luci.ErrExecutionFailure, err)
+	}
+
+	err = service.EnableService(alreadyCancelledCtx, expectedServiceName)
+	if err == nil || !errors.Is(err, internal_http.ErrRpcTimeout) {
+		t.Errorf("expected enable service in error with error %s, got %s", internal_http.ErrRpcTimeout, err)
+	}
+
+	err = service.EnableService(t.Context(), expectedServiceName)
+	if err == nil || !errors.Is(err, luci.ErrExecutionFailure) {
+		t.Errorf("expected enable service in error with error %s, got %s", luci.ErrExecutionFailure, err)
+	}
+
+	err = service.StartService(alreadyCancelledCtx, expectedServiceName)
+	if err == nil || !errors.Is(err, internal_http.ErrRpcTimeout) {
+		t.Errorf("expected start service in error with error %s, got %s", internal_http.ErrRpcTimeout, err)
+	}
+
+	err = service.StartService(t.Context(), expectedServiceName)
+	if err == nil || !errors.Is(err, luci.ErrExecutionFailure) {
+		t.Errorf("expected start service in error with error %s, got %s", luci.ErrExecutionFailure, err)
+	}
+
+	err = service.StopService(alreadyCancelledCtx, expectedServiceName)
+	if err == nil || !errors.Is(err, internal_http.ErrRpcTimeout) {
+		t.Errorf("expected start service in error with error %s, got %s", internal_http.ErrRpcTimeout, err)
+	}
+
+	err = service.StopService(t.Context(), expectedServiceName)
+	if err == nil || !errors.Is(err, luci.ErrExecutionFailure) {
+		t.Errorf("expected start service in error with error %s, got %s", luci.ErrExecutionFailure, err)
+	}
+
+	err = service.RestartService(alreadyCancelledCtx, expectedServiceName)
+	if err == nil || !errors.Is(err, internal_http.ErrRpcTimeout) {
+		t.Errorf("expected start service in error with error %s, got %s", internal_http.ErrRpcTimeout, err)
+	}
+}
+
+func serviceMockedRoundTripper(
 	t *testing.T,
 	expectedHost *url.URL,
 	username,

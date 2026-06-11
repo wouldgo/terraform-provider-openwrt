@@ -78,7 +78,7 @@ func (m mockTimeouts) EnableService() time.Duration {
 func (m mockTimeouts) StartService() time.Duration {
 	return m.startService
 }
-func (m mockTimeouts) StopSevice() time.Duration {
+func (m mockTimeouts) StopService() time.Duration {
 	return m.stopSevice
 }
 func (m mockTimeouts) RestartService() time.Duration {

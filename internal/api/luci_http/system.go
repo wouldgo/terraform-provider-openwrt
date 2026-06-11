@@ -35,7 +35,7 @@ type system struct {
 
 func (s *system) GetAll(ctx context.Context, sections ...any) ([]luci.System, error) {
 	if len(sections) == 0 {
-		return nil, fmt.Errorf("no sections specified")
+		return nil, luci.ErrSectionsNotSpecified
 	}
 
 	return http.Call(
@@ -64,15 +64,18 @@ func (s *system) GetSystem(ctx context.Context) (luci.System, error) {
 		}
 	}
 
-	return zero, fmt.Errorf("system section not found")
+	return zero, errors.Join(luci.ErrSectionNotFound, errors.New("system section"))
 }
 
-func (s *system) TSet(ctx context.Context, data any, section ...any) error {
+func (s *system) TSet(ctx context.Context, data any, sections ...any) error {
+	if len(sections) == 0 {
+		return luci.ErrSectionsNotSpecified
+	}
 	data, err := purgeFields(&data)
 	if err != nil {
 		return err
 	}
-	section = append(section, data)
+	sections = append(sections, data)
 	_, err = http.Call(
 		ctx,
 		s.BaseClient,
@@ -80,13 +83,17 @@ func (s *system) TSet(ctx context.Context, data any, section ...any) error {
 		uciRPC,
 		uciMethodTSet,
 		http_transformers.IgnoreOutputTransformer,
-		section...,
+		sections...,
 	)
 
 	return err
 }
 
-func (s *system) Add(ctx context.Context, section ...any) (string, error) {
+func (s *system) Add(ctx context.Context, sections ...any) (string, error) {
+	var zero string
+	if len(sections) == 0 {
+		return zero, luci.ErrSectionsNotSpecified
+	}
 	return http.Call(
 		ctx,
 		s.BaseClient,
@@ -94,11 +101,14 @@ func (s *system) Add(ctx context.Context, section ...any) (string, error) {
 		uciRPC,
 		uciMethodAdd,
 		http_transformers.StringTransformer,
-		section...,
+		sections...,
 	)
 }
 
-func (s *system) Delete(ctx context.Context, section ...any) error {
+func (s *system) Delete(ctx context.Context, sections ...any) error {
+	if len(sections) == 0 {
+		return luci.ErrSectionsNotSpecified
+	}
 	_, err := http.Call(
 		ctx,
 		s.BaseClient,
@@ -106,13 +116,16 @@ func (s *system) Delete(ctx context.Context, section ...any) error {
 		uciRPC,
 		uciMethodDelete,
 		http_transformers.IgnoreOutputTransformer,
-		section...,
+		sections...,
 	)
 
 	return err
 }
 
-func (s *system) uciCommit(ctx context.Context, section ...any) error {
+func (s *system) uciCommit(ctx context.Context, sections ...any) error {
+	if len(sections) == 0 {
+		return luci.ErrSectionsNotSpecified
+	}
 	result, err := http.Call(
 		ctx,
 		s.BaseClient,
@@ -120,19 +133,22 @@ func (s *system) uciCommit(ctx context.Context, section ...any) error {
 		uciRPC,
 		uciMethodCommit,
 		http_transformers.BooleanTransformer,
-		section...,
+		sections...,
 	)
 	if err != nil {
 		return errors.Join(luci.ErrExecutionFailure, fmt.Errorf("uci commit call ko: %w", err))
 	}
 
 	if !result {
-		return fmt.Errorf("uci commit not ok")
+		return luci.ErrUCICommit
 	}
 	return err
 }
 
-func (s *system) uciRevert(ctx context.Context, section ...any) error {
+func (s *system) uciRevert(ctx context.Context, sections ...any) error {
+	if len(sections) == 0 {
+		return luci.ErrSectionsNotSpecified
+	}
 	result, err := http.Call(
 		ctx,
 		s.BaseClient,
@@ -140,26 +156,26 @@ func (s *system) uciRevert(ctx context.Context, section ...any) error {
 		uciRPC,
 		uciMethodRevert,
 		http_transformers.BooleanTransformer,
-		section...,
+		sections...,
 	)
 	if err != nil {
-		return errors.Join(luci.ErrExecutionFailure, fmt.Errorf("uci commit call ko: %w", err))
+		return errors.Join(luci.ErrExecutionFailure, fmt.Errorf("uci revert call ko: %w", err))
 	}
 
 	if !result {
-		return fmt.Errorf("uci revert not ok")
+		return luci.ErrUCIRevert
 	}
 	return err
 }
 
-func (s *system) CommitOrRevert(ctx context.Context, section ...any) error {
+func (s *system) CommitOrRevert(ctx context.Context, sections ...any) error {
 	toReturn := make([]error, 0, 2)
-	err := s.uciCommit(ctx, section...)
+	err := s.uciCommit(ctx, sections...)
 	if err != nil {
-		toReturn = append(toReturn, fmt.Errorf("failed to commit config %q: %w", section, err))
-		err = s.uciRevert(ctx, section...)
+		toReturn = append(toReturn, fmt.Errorf("failed to commit config %q: %w", sections, err))
+		err = s.uciRevert(ctx, sections...)
 		if err != nil {
-			toReturn = append(toReturn, fmt.Errorf("failed to revert config %q: %w", section, err))
+			toReturn = append(toReturn, fmt.Errorf("failed to revert config %q: %w", sections, err))
 		}
 	}
 

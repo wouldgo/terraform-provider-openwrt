@@ -17,11 +17,17 @@ var (
 	ErrPackageNotFound      = errors.New("package not found")
 	ErrPackagesNotSpecified = errors.New("no packages specified")
 
+	ErrSectionsNotSpecified = errors.New("no sections specified")
+	ErrSectionNotFound      = errors.New("section not found")
+	ErrUCICommit            = errors.New("uci commit not ok")
+	ErrUCIRevert            = errors.New("uci revert not ok")
+
 	ErrExecutionFailure = errors.New("execution returned value a failing result")
 
 	ErrMissingRemoteBaseURL = errors.New("missing remote url")
 	ErrMissingUsername      = errors.New("missing username")
 	ErrMissingPassword      = errors.New("missing password")
+	ErrMissingTimeouts      = errors.New("missing timeouts")
 )
 
 type Timeouts interface {

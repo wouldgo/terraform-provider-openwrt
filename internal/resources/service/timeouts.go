@@ -64,7 +64,7 @@ func (sT serviceTimeouts) StartService() time.Duration {
 	return sT.startServiceTimeout
 }
 
-func (sT serviceTimeouts) StopSevice() time.Duration {
+func (sT serviceTimeouts) StopService() time.Duration {
 	return sT.stopSeviceTimeout
 }
 

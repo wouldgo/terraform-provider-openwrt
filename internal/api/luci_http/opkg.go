@@ -75,17 +75,13 @@ func (c *opkg) InstallPackages(ctx context.Context, packages ...string) error {
 		http_transformers.OpkgErrCheckerTransformer,
 		toApi...,
 	)
-	if err != nil {
-		return err
-	}
-
 	return err
 }
 
 func (c *opkg) RemovePackages(ctx context.Context, packages ...string) error {
 	packagesLen := len(packages)
 	if packagesLen == 0 {
-		return luci.ErrPackageNotFound
+		return luci.ErrPackagesNotSpecified
 	}
 
 	toApi := make([]any, 0, packagesLen)

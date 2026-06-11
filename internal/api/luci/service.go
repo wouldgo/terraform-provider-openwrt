@@ -14,7 +14,7 @@ type ServiceFacade interface {
 	DisableService(ctx context.Context, serviceName string) error
 	EnableService(ctx context.Context, serviceName string) error
 	StartService(ctx context.Context, serviceName string) error
-	StopSevice(ctx context.Context, serviceName string) error
+	StopService(ctx context.Context, serviceName string) error
 	RestartService(ctx context.Context, serviceName string) error
 }
 
@@ -24,6 +24,6 @@ type ServiceTimeouts interface {
 	DisableService() time.Duration
 	EnableService() time.Duration
 	StartService() time.Duration
-	StopSevice() time.Duration
+	StopService() time.Duration
 	RestartService() time.Duration
 }

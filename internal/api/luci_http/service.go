@@ -5,6 +5,7 @@ package luci_http
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
@@ -70,7 +71,7 @@ func (s *service) DisableService(ctx context.Context, serviceName string) error 
 	}
 
 	if !result {
-		return fmt.Errorf("unable to disable service %s: %w", serviceName, luci.ErrExecutionFailure)
+		return errors.Join(luci.ErrExecutionFailure, fmt.Errorf("unable to disable service %s", serviceName))
 	}
 	return nil
 }
@@ -90,7 +91,7 @@ func (s *service) EnableService(ctx context.Context, serviceName string) error {
 	}
 
 	if !result {
-		return fmt.Errorf("unable to enable service %s: %w", serviceName, luci.ErrExecutionFailure)
+		return errors.Join(luci.ErrExecutionFailure, fmt.Errorf("unable to enable service %s", serviceName))
 	}
 	return nil
 }
@@ -110,16 +111,16 @@ func (s *service) StartService(ctx context.Context, serviceName string) error {
 	}
 
 	if !result {
-		return fmt.Errorf("unable to start service %s: %w", serviceName, luci.ErrExecutionFailure)
+		return errors.Join(luci.ErrExecutionFailure, fmt.Errorf("unable to start service %s", serviceName))
 	}
 	return nil
 }
 
-func (s *service) StopSevice(ctx context.Context, serviceName string) error {
+func (s *service) StopService(ctx context.Context, serviceName string) error {
 	result, err := http.Call(
 		ctx,
 		s.BaseClient,
-		s.timeouts.StopSevice(),
+		s.timeouts.StopService(),
 		serviceRPC,
 		serviceMethodStop,
 		http_transformers.BooleanTransformer,
@@ -136,7 +137,7 @@ func (s *service) StopSevice(ctx context.Context, serviceName string) error {
 }
 
 func (s *service) RestartService(ctx context.Context, serviceName string) error {
-	err := s.StopSevice(ctx, serviceName)
+	err := s.StopService(ctx, serviceName)
 	if err != nil {
 		return err
 	}

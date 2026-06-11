@@ -106,7 +106,7 @@ func Call[T any](
 ) (T, error) {
 	var zero T
 	if err := ctx.Err(); err != nil {
-		return zero, errors.Join(err, ErrRpcTimeout)
+		return zero, errors.Join(ErrRpcTimeout, err)
 	}
 
 	req, err := prepareRequest(

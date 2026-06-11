@@ -28,7 +28,7 @@ func TestOpkgRPCs(t *testing.T) {
 	expectedVersion := "1.1.1-test"
 	expectedInstalled := true
 	timeouts := newMockTimeouts(2 * time.Second)
-	mockedRoundTripper := opkgHappyPathMockedRoundTripper(
+	mockedRoundTripper := opkgMockedRoundTripper(
 		t,
 		expectedHost,
 		expectedUsername,
@@ -80,6 +80,13 @@ func TestOpkgRPCs(t *testing.T) {
 
 	err = opkg.InstallPackages(
 		t.Context(),
+	)
+	if err == nil || !errors.Is(err, luci.ErrPackagesNotSpecified) {
+		t.Errorf("install no packages must return an error %s, got %s", luci.ErrPackagesNotSpecified, err)
+	}
+
+	err = opkg.InstallPackages(
+		t.Context(),
 		expectedPackage,
 	)
 	if err != nil {
@@ -88,14 +95,21 @@ func TestOpkgRPCs(t *testing.T) {
 
 	err = opkg.RemovePackages(
 		t.Context(),
+	)
+	if err == nil || !errors.Is(err, luci.ErrPackagesNotSpecified) {
+		t.Errorf("remove no packages must return an error %s, got %s", luci.ErrPackagesNotSpecified, err)
+	}
+
+	err = opkg.RemovePackages(
+		t.Context(),
 		expectedPackage,
 	)
 	if err != nil {
-		t.Errorf("install package error: %v", err)
+		t.Errorf("remove package error: %v", err)
 	}
 }
 
-func opkgHappyPathMockedRoundTripper(
+func opkgMockedRoundTripper(
 	t *testing.T,
 	expectedHost *url.URL,
 	username,

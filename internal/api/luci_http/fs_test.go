@@ -29,7 +29,7 @@ func TestFsRPCs(t *testing.T) {
 	fileContentEncodedBytes, _ := json.Marshal(exptectedFileContent)
 	expectedFileContentEncoded := string(fileContentEncodedBytes)
 	expectedFileContentEncoded = expectedFileContentEncoded[1 : len(expectedFileContentEncoded)-1]
-	mockedRoundTripper := fsHappyPathMockedRoundTripper(
+	mockedRoundTripper := fsMockedRoundTripper(
 		t,
 		expectedHost,
 		expectedUsername,
@@ -83,7 +83,7 @@ func TestFsRPCs(t *testing.T) {
 	}
 }
 
-func fsHappyPathMockedRoundTripper(
+func fsMockedRoundTripper(
 	t *testing.T,
 	expectedHost *url.URL,
 	username,

@@ -71,6 +71,9 @@ func (cf *httpRPCFactory) Get(ctx context.Context,
 	if password == "" {
 		return nil, luci.ErrMissingPassword
 	}
+	if timeouts == nil {
+		return nil, luci.ErrMissingTimeouts
+	}
 
 	cf.dynamicTransport.Add("logging", http_middlewares.WithLogging())
 	cf.dynamicTransport.Add("authentication", http_middlewares.WithAuth(
