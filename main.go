@@ -1,4 +1,4 @@
-// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// Copyright https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors 2025, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package main
@@ -8,7 +8,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/foxboron/terraform-provider-openwrt/internal/api"
+	"github.com/foxboron/terraform-provider-openwrt/internal/api/luci_http"
 	"github.com/foxboron/terraform-provider-openwrt/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
@@ -28,13 +28,12 @@ func main() {
 		Debug:   debug,
 	}
 
-	clientFactory, err := api.NewClientFactory()
+	clientFactory, err := luci_http.NewHTTPRPCFactory(luci_http.HTTPRPCConfiguration{})
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
 	err = providerserver.Serve(context.Background(), provider.New(version, clientFactory), opts)
-
 	if err != nil {
 		log.Fatal(err.Error())
 	}

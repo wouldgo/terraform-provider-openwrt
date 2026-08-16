@@ -1,26 +1,41 @@
-// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// Copyright https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors 2025, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package opkg_test
 
 import (
 	"context"
-	"errors"
 	"os"
 	"regexp"
 	"testing"
 
+	"github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
+	this_http "github.com/foxboron/terraform-provider-openwrt/internal/http"
 	"github.com/foxboron/terraform-provider-openwrt/internal/testutil"
 
-	"github.com/foxboron/terraform-provider-openwrt/internal/api"
 	"github.com/foxboron/terraform-provider-openwrt/mocks"
-	tfjson "github.com/hashicorp/terraform-json"
 	"go.uber.org/mock/gomock"
 
+	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 )
+
+func prepareMockProvider(
+	t *testing.T,
+	rpcFactory *mocks.MockRPCFactory,
+	theRPC *mocks.MockRPC,
+) {
+	rpcFactory.
+		EXPECT().
+		Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+		DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
+			t.Logf("Get method called")
+			return theRPC, nil
+		}).
+		AnyTimes()
+}
 
 func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 	os.Setenv("TF_ACC", "1")    //nolint:errcheck
@@ -29,9 +44,8 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	clientFactory := mocks.NewMockClientFactory(ctrl)
-	timeouts := mocks.NewMockTimeouts(ctrl)
-	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
+	rpcFactory := mocks.NewMockRPCFactory(ctrl)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(rpcFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -41,18 +55,11 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				PreConfig: func() {
-					client := mocks.NewMockClient(ctrl)
+					luciRPC := mocks.NewMockRPC(ctrl)
 
-					client.
-						EXPECT().
-						Auth(gomock.Any(), "root", "test").
-						DoAndReturn(func(_ context.Context, username, password string) error {
-							t.Logf("Auth method called with: %s, %s", username, password)
-							return nil
-						}).
-						AnyTimes()
+					prepareMockProvider(t, rpcFactory, luciRPC)
 
-					client.
+					luciRPC.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
 						DoAndReturn(func(_ context.Context) error {
@@ -61,45 +68,28 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 						}).
 						AnyTimes()
 
-					clientFactory.
-						EXPECT().
-						ParseTimeouts(gomock.Any(), gomock.Any()).
-						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-							return timeouts, nil
-						}).
-						AnyTimes()
-
-					clientFactory.
-						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
-							t.Logf("Get method called")
-							return client, nil
-						}).
-						AnyTimes()
-
-					checkPackagesNotInstalled := client.
+					checkPackagesNotInstalled := luciRPC.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						DoAndReturn(func(_ context.Context, _ string) (*api.PackageInfo, error) {
+						DoAndReturn(func(_ context.Context, _ string) (luci.PackageInfo, error) {
 							t.Logf("CheckPackage method called")
-							return &api.PackageInfo{
+							return luci.PackageInfo{
 								Version: "",
-								Status: api.Status{
+								Status: luci.Status{
 									Installed: false,
 								},
 							}, nil
 						}).
 						Times(1)
 
-					client.
+					luciRPC.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						DoAndReturn(func(_ context.Context, _ string) (*api.PackageInfo, error) {
+						DoAndReturn(func(_ context.Context, _ string) (luci.PackageInfo, error) {
 							t.Logf("CheckPackage method called")
-							return &api.PackageInfo{
+							return luci.PackageInfo{
 								Version: "test",
-								Status: api.Status{
+								Status: luci.Status{
 									Installed: true,
 								},
 							}, nil
@@ -107,7 +97,7 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 						AnyTimes().
 						After(checkPackagesNotInstalled)
 
-					client.
+					luciRPC.
 						EXPECT().
 						InstallPackages(gomock.Any(), "curl").
 						DoAndReturn(func(_ context.Context, _ ...string) error {
@@ -117,7 +107,7 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 						Times(1)
 
 					//Teardown resource
-					client.
+					luciRPC.
 						EXPECT().
 						RemovePackages(gomock.Any(), "curl").
 						DoAndReturn(func(_ context.Context, _ ...string) error {
@@ -128,9 +118,9 @@ func TestAccOpkg_AllDepsAreMissing(t *testing.T) {
 				},
 				Config: `
 				provider "openwrt" {
-					 user = "root"
-						password = "test"
-						remote = "http://test.lan:8080"
+					user = "root"
+					password = "test"
+					remote = "http://test.lan:8080"
 				}
         resource "openwrt_opkg" "test" {
           packages = ["curl"]
@@ -171,9 +161,8 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	clientFactory := mocks.NewMockClientFactory(ctrl)
-	timeouts := mocks.NewMockTimeouts(ctrl)
-	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
+	rpcFactory := mocks.NewMockRPCFactory(ctrl)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(rpcFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -183,18 +172,11 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				PreConfig: func() {
-					client := mocks.NewMockClient(ctrl)
+					theRPC := mocks.NewMockRPC(ctrl)
 
-					client.
-						EXPECT().
-						Auth(gomock.Any(), "root", "test").
-						DoAndReturn(func(_ context.Context, username, password string) error {
-							t.Logf("Auth method called with: %s, %s", username, password)
-							return nil
-						}).
-						AnyTimes()
+					prepareMockProvider(t, rpcFactory, theRPC)
 
-					client.
+					theRPC.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
 						DoAndReturn(func(_ context.Context) error {
@@ -203,31 +185,14 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 						}).
 						AnyTimes()
 
-					clientFactory.
-						EXPECT().
-						ParseTimeouts(gomock.Any(), gomock.Any()).
-						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-							return timeouts, nil
-						}).
-						AnyTimes()
-
-					clientFactory.
-						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
-							t.Logf("Get method called")
-							return client, nil
-						}).
-						AnyTimes()
-
-					client.
+					theRPC.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+						DoAndReturn(func(ctx context.Context, s string) (luci.PackageInfo, error) {
 							t.Logf("CheckPackage method called")
-							return &api.PackageInfo{
+							return luci.PackageInfo{
 								Version: "test",
-								Status: api.Status{
+								Status: luci.Status{
 									Installed: true,
 								},
 							}, nil
@@ -235,7 +200,7 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 						AnyTimes()
 
 					//Teardown resource
-					client.
+					theRPC.
 						EXPECT().
 						RemovePackages(gomock.Any(), "curl").
 						DoAndReturn(func(ctx context.Context, s ...string) error {
@@ -246,9 +211,9 @@ func TestAccOpkg_NoDepsAreMissing(t *testing.T) {
 				},
 				Config: `
 				provider "openwrt" {
-					 user = "root"
-						password = "test"
-						remote = "http://test.lan:8080"
+					user = "root"
+					password = "test"
+					remote = "http://test.lan:8080"
 				}
         resource "openwrt_opkg" "test" {
           packages = ["curl"]
@@ -289,66 +254,41 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	clientFactory := mocks.NewMockClientFactory(ctrl)
-	timeouts := mocks.NewMockTimeouts(ctrl)
-	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
+	rpcFactory := mocks.NewMockRPCFactory(ctrl)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(rpcFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		PreCheck: func() {
 			// e.g., check environment or emulator availability
-			client := mocks.NewMockClient(ctrl)
+			theRPC := mocks.NewMockRPC(ctrl)
 
-			client.
-				EXPECT().
-				Auth(gomock.Any(), "root", "test").
-				DoAndReturn(func(_ context.Context, username, password string) error {
-					t.Logf("Auth method called with: %s, %s", username, password)
-					return nil
-				}).
-				AnyTimes()
+			prepareMockProvider(t, rpcFactory, theRPC)
 
-			client.
+			theRPC.
 				EXPECT().
 				UpdatePackages(gomock.Any()).
-				DoAndReturn(func(ctx context.Context) error {
+				DoAndReturn(func(_ context.Context) error {
 					t.Logf("UpdatePackages method called")
 					return nil
 				}).
 				AnyTimes()
 
-			clientFactory.
-				EXPECT().
-				ParseTimeouts(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-					return timeouts, nil
-				}).
-				AnyTimes()
-
-			clientFactory.
-				EXPECT().
-				Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-				DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
-					t.Logf("Get method called")
-					return client, nil
-				}).
-				AnyTimes()
-
-			client.
+			theRPC.
 				EXPECT().
 				CheckPackage(gomock.Any(), "curl").
-				DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+				DoAndReturn(func(ctx context.Context, s string) (luci.PackageInfo, error) {
 					t.Logf("CheckPackage method called")
-					return &api.PackageInfo{
+					return luci.PackageInfo{
 						Version: "test",
-						Status: api.Status{
+						Status: luci.Status{
 							Installed: true,
 						},
 					}, nil
 				}).
 				AnyTimes()
 
-			client.
+			theRPC.
 				EXPECT().
 				InstallPackages(gomock.Any(), "wget").
 				DoAndReturn(func(ctx context.Context, s ...string) error {
@@ -357,14 +297,14 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 				}).
 				Times(1)
 
-			client.
+			theRPC.
 				EXPECT().
 				CheckPackage(gomock.Any(), "wget").
-				DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+				DoAndReturn(func(ctx context.Context, s string) (luci.PackageInfo, error) {
 					t.Logf("CheckPackage method called")
-					return &api.PackageInfo{
+					return luci.PackageInfo{
 						Version: "test",
-						Status: api.Status{
+						Status: luci.Status{
 							Installed: true,
 						},
 					}, nil
@@ -372,7 +312,7 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 				AnyTimes()
 
 			//Teardown resource
-			client.
+			theRPC.
 				EXPECT().
 				RemovePackages(gomock.Any(), "curl").
 				DoAndReturn(func(ctx context.Context, s ...string) error {
@@ -381,7 +321,7 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 				}).
 				Times(1)
 
-			client.
+			theRPC.
 				EXPECT().
 				RemovePackages(gomock.Any(), "wget").
 				DoAndReturn(func(ctx context.Context, s ...string) error {
@@ -394,9 +334,9 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 			{
 				Config: `
 				provider "openwrt" {
-					 user = "root"
-						password = "test"
-						remote = "http://test.lan:8080"
+					user = "root"
+					password = "test"
+					remote = "http://test.lan:8080"
 				}
         resource "openwrt_opkg" "test" {
           packages = ["curl"]
@@ -429,9 +369,9 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 			{
 				Config: `
 				provider "openwrt" {
-					 user = "root"
-						password = "test"
-						remote = "http://test.lan:8080"
+					user = "root"
+					password = "test"
+					remote = "http://test.lan:8080"
 				}
         resource "openwrt_opkg" "test" {
           packages = ["curl", "wget"]
@@ -465,9 +405,9 @@ func TestAccOpkg_OneDepencyIsMissing(t *testing.T) {
 			{
 				Config: `
 				provider "openwrt" {
-					 user = "root"
-						password = "test"
-						remote = "http://test.lan:8080"
+					user = "root"
+					password = "test"
+					remote = "http://test.lan:8080"
 				}
         resource "openwrt_opkg" "test" {
           packages = ["curl"]
@@ -508,9 +448,8 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	clientFactory := mocks.NewMockClientFactory(ctrl)
-	timeouts := mocks.NewMockTimeouts(ctrl)
-	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
+	rpcFactory := mocks.NewMockRPCFactory(ctrl)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(rpcFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -520,122 +459,93 @@ func TestAcc_ProviderApiAreFailing(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				PreConfig: func() {
-					clientFactory.
+					rpcFactory.
 						EXPECT().
-						ParseTimeouts(gomock.Any(), gomock.Any()).
-						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-							return timeouts, nil
-						}).
-						AnyTimes()
-
-					clientFactory.
-						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
+						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 							t.Logf("Get method called")
-							return nil, api.ErrMissingUrl
+							return nil, luci.ErrMissingRemoteBaseURL
 						}).
 						Times(1)
 				},
 				Config: `
 				provider "openwrt" {
-					 user = "root"
-						password = "test"
-						remote = "http://test.lan:8080"
+					user = "root"
+					password = "test"
+					remote = "http://test.lan:8080"
 				}
-        resource "openwrt_opkg" "test" {
-          packages = ["curl"]
-        }`,
-				ExpectError: regexp.MustCompile(api.ErrMissingUrl.Error()),
+			  resource "openwrt_opkg" "test" {
+			    packages = ["curl"]
+			  }`,
+				ExpectError: regexp.MustCompile(luci.ErrMissingRemoteBaseURL.Error()),
 			},
 
 			{
 				PreConfig: func() {
-					client := mocks.NewMockClient(ctrl)
-					clientFactory.
+					theRPC := mocks.NewMockRPC(ctrl)
+
+					rpcFactory.
 						EXPECT().
-						ParseTimeouts(gomock.Any(), gomock.Any()).
-						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-							return timeouts, nil
-						}).
-						AnyTimes()
-					clientFactory.
-						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
+						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 							t.Logf("Get method called")
-							return client, nil
+							return theRPC, nil
 						}).
 						Times(1)
 
-					client.
-						EXPECT().
-						Auth(gomock.Any(), "root", "test").
-						DoAndReturn(func(ctx context.Context, s1, s2 string) error {
-							t.Logf("Auth method called")
-							return errors.Join(api.ErrMarshal, errors.New("mon petit json"))
-						}).
-						Times(1)
-				},
-				Config: `
-				provider "openwrt" {
-					 user = "root"
-						password = "test"
-						remote = "http://test.lan:8080"
-				}
-        resource "openwrt_opkg" "test" {
-          packages = ["curl"]
-        }`,
-				ExpectError: regexp.MustCompile(api.ErrMarshal.Error()),
-			},
-
-			{
-				PreConfig: func() {
-					client := mocks.NewMockClient(ctrl)
-					clientFactory.
-						EXPECT().
-						ParseTimeouts(gomock.Any(), gomock.Any()).
-						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-							return timeouts, nil
-						}).
-						AnyTimes()
-					clientFactory.
-						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
-							t.Logf("Get method called")
-							return client, nil
-						}).
-						Times(1)
-
-					client.
-						EXPECT().
-						Auth(gomock.Any(), "root", "test").
-						DoAndReturn(func(ctx context.Context, s1, s2 string) error {
-							t.Logf("Auth method called")
-							return nil
-						}).
-						Times(1)
-
-					client.
+					theRPC.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
 						DoAndReturn(func(ctx context.Context) error {
 							t.Logf("UpdatePackages method called")
-							return api.ErrFloatExpected
+							return this_http.ErrMarshal
 						}).
 						Times(1)
 				},
 				Config: `
 				provider "openwrt" {
-					 user = "root"
-						password = "test"
-						remote = "http://test.lan:8080"
+					user = "root"
+					password = "test"
+					remote = "http://test.lan:8080"
+				}
+			  resource "openwrt_opkg" "test" {
+			    packages = ["curl"]
+			  }`,
+				ExpectError: regexp.MustCompile(this_http.ErrMarshal.Error()),
+			},
+
+			{
+				PreConfig: func() {
+					theRPC := mocks.NewMockRPC(ctrl)
+
+					rpcFactory.
+						EXPECT().
+						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
+							t.Logf("Get method called")
+							return theRPC, nil
+						}).
+						Times(1)
+
+					theRPC.
+						EXPECT().
+						UpdatePackages(gomock.Any()).
+						DoAndReturn(func(ctx context.Context) error {
+							t.Logf("UpdatePackages method called")
+							return luci.ErrFloatExpected
+						}).
+						Times(1)
+				},
+				Config: `
+				provider "openwrt" {
+					user = "root"
+					password = "test"
+					remote = "http://test.lan:8080"
 				}
         resource "openwrt_opkg" "test" {
           packages = ["curl"]
         }`,
-				ExpectError: regexp.MustCompile(api.ErrFloatExpected.Error()),
+				ExpectError: regexp.MustCompile(luci.ErrFloatExpected.Error()),
 			},
 		},
 	})
@@ -648,9 +558,8 @@ func TestAccOpkg_CheckPackageInCreateIsFailing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	clientFactory := mocks.NewMockClientFactory(ctrl)
-	timeouts := mocks.NewMockTimeouts(ctrl)
-	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
+	rpcFactory := mocks.NewMockRPCFactory(ctrl)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(rpcFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -660,61 +569,39 @@ func TestAccOpkg_CheckPackageInCreateIsFailing(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				PreConfig: func() {
-					client := mocks.NewMockClient(ctrl)
+					theRPC := mocks.NewMockRPC(ctrl)
 
-					clientFactory.
-						EXPECT().
-						ParseTimeouts(gomock.Any(), gomock.Any()).
-						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-							return timeouts, nil
-						}).
-						AnyTimes()
-					clientFactory.
-						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
-							t.Logf("Get method called")
-							return client, nil
-						}).
-						AnyTimes()
+					prepareMockProvider(t, rpcFactory, theRPC)
 
-					client.
-						EXPECT().
-						Auth(gomock.Any(), "root", "test").
-						DoAndReturn(func(_ context.Context, username, password string) error {
-							t.Logf("Auth method called with: %s, %s", username, password)
-							return nil
-						}).
-						Times(2)
-
-					client.
+					theRPC.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
 						DoAndReturn(func(_ context.Context) error {
 							t.Logf("UpdatePackages method called")
 							return nil
 						}).
-						Times(2)
+						AnyTimes()
 
-					client.
+					theRPC.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+						DoAndReturn(func(ctx context.Context, s string) (luci.PackageInfo, error) {
 							t.Logf("CheckPackage method called")
-							return nil, api.ErrPackageNotFound
+							var zero luci.PackageInfo
+							return zero, luci.ErrPackageNotFound
 						}).
 						Times(1)
 				},
 				Config: `
 				provider "openwrt" {
-					 user = "root"
-						password = "test"
-						remote = "http://test.lan:8080"
+					user = "root"
+					password = "test"
+					remote = "http://test.lan:8080"
 				}
         resource "openwrt_opkg" "test" {
           packages = ["curl"]
         }`,
-				ExpectError: regexp.MustCompile(api.ErrPackageNotFound.Error()),
+				ExpectError: regexp.MustCompile(luci.ErrPackageNotFound.Error()),
 			},
 		},
 	})
@@ -727,9 +614,8 @@ func TestAccOpkg_InstallPackagesIsFailing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	clientFactory := mocks.NewMockClientFactory(ctrl)
-	timeouts := mocks.NewMockTimeouts(ctrl)
-	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
+	rpcFactory := mocks.NewMockRPCFactory(ctrl)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(rpcFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -739,76 +625,52 @@ func TestAccOpkg_InstallPackagesIsFailing(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				PreConfig: func() {
-					client := mocks.NewMockClient(ctrl)
+					theRPC := mocks.NewMockRPC(ctrl)
 
-					clientFactory.
-						EXPECT().
-						ParseTimeouts(gomock.Any(), gomock.Any()).
-						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-							return timeouts, nil
-						}).
-						AnyTimes()
+					prepareMockProvider(t, rpcFactory, theRPC)
 
-					clientFactory.
-						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
-							t.Logf("Get method called")
-							return client, nil
-						}).
-						AnyTimes()
-
-					client.
-						EXPECT().
-						Auth(gomock.Any(), "root", "test").
-						DoAndReturn(func(ctx context.Context, s1, s2 string) error {
-							t.Logf("Auth method called")
-							return nil
-						}).
-						Times(2)
-
-					client.
+					theRPC.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
-						DoAndReturn(func(ctx context.Context) error {
+						DoAndReturn(func(_ context.Context) error {
 							t.Logf("UpdatePackages method called")
 							return nil
 						}).
-						Times(2)
+						AnyTimes()
 
-					client.
+					theRPC.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+						DoAndReturn(func(ctx context.Context, s string) (luci.PackageInfo, error) {
 							t.Logf("CheckPackage method called")
-							return &api.PackageInfo{
+							return luci.PackageInfo{
 								Version: "",
-								Status: api.Status{
+								Status: luci.Status{
 									Installed: false,
 								},
 							}, nil
 						}).
 						Times(1)
 
-					client.
+					theRPC.
 						EXPECT().
 						InstallPackages(gomock.Any(), "curl").
 						DoAndReturn(func(ctx context.Context, s ...string) error {
 							t.Logf("InstallPackages method called")
-							return api.ErrFloatExpected
+							return luci.ErrFloatExpected
 						}).
 						Times(1)
 				},
 				Config: `
 				provider "openwrt" {
-					 user = "root"
-						password = "test"
-						remote = "http://test.lan:8080"
+					user = "root"
+					password = "test"
+					remote = "http://test.lan:8080"
 				}
         resource "openwrt_opkg" "test" {
           packages = ["curl"]
         }`,
-				ExpectError: regexp.MustCompile(api.ErrFloatExpected.Error()),
+				ExpectError: regexp.MustCompile(luci.ErrFloatExpected.Error()),
 			},
 		},
 	})
@@ -821,9 +683,8 @@ func TestAccOpkg_CheckPackageInUpdateIsFailing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	clientFactory := mocks.NewMockClientFactory(ctrl)
-	timeouts := mocks.NewMockTimeouts(ctrl)
-	testAccProtoV6ProviderFactories := testutil.TestAccFactories(clientFactory)
+	rpcFactory := mocks.NewMockRPCFactory(ctrl)
+	testAccProtoV6ProviderFactories := testutil.TestAccFactories(rpcFactory)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -833,36 +694,18 @@ func TestAccOpkg_CheckPackageInUpdateIsFailing(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				PreConfig: func() {
-					client := mocks.NewMockClient(ctrl)
+					theRPC := mocks.NewMockRPC(ctrl)
 
-					clientFactory.
+					rpcFactory.
 						EXPECT().
-						ParseTimeouts(gomock.Any(), gomock.Any()).
-						DoAndReturn(func(ctx context.Context, tm *api.TimeoutsModel) (api.Timeouts, error) {
-							return timeouts, nil
-						}).
-						AnyTimes()
-
-					clientFactory.
-						EXPECT().
-						Get(gomock.Any(), "http://test.lan:8080", gomock.Any()).
-						DoAndReturn(func(_ context.Context, _ string, _ api.Timeouts) (api.Client, error) {
+						Get(gomock.Any(), "http://test.lan:8080", "root", "test", gomock.Any()).
+						DoAndReturn(func(_ context.Context, _, _, _ string, _ luci.Timeouts) (luci.RPC, error) {
 							t.Logf("Get method called")
-							return client, nil
+							return theRPC, nil
 						}).
 						AnyTimes()
 
-					client.
-						EXPECT().
-						Auth(gomock.Any(), "root", "test").
-						Return(nil).
-						DoAndReturn(func(ctx context.Context, s1, s2 string) error {
-							t.Logf("Auth method called")
-							return nil
-						}).
-						AnyTimes()
-
-					client.
+					theRPC.
 						EXPECT().
 						UpdatePackages(gomock.Any()).
 						DoAndReturn(func(ctx context.Context) error {
@@ -871,31 +714,32 @@ func TestAccOpkg_CheckPackageInUpdateIsFailing(t *testing.T) {
 						}).
 						AnyTimes()
 
-					checkPackagesNotInstalled := client.
+					checkPackagesNotInstalled := theRPC.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+						DoAndReturn(func(ctx context.Context, s string) (luci.PackageInfo, error) {
 							t.Logf("CheckPackage method called")
-							return &api.PackageInfo{
+							return luci.PackageInfo{
 								Version: "",
-								Status: api.Status{
+								Status: luci.Status{
 									Installed: false,
 								},
 							}, nil
 						}).
 						Times(1)
 
-					client.
+					theRPC.
 						EXPECT().
 						CheckPackage(gomock.Any(), "curl").
-						DoAndReturn(func(ctx context.Context, s string) (*api.PackageInfo, error) {
+						DoAndReturn(func(ctx context.Context, s string) (luci.PackageInfo, error) {
 							t.Logf("CheckPackage method called")
-							return nil, api.ErrPackageNotFound
+							var zero luci.PackageInfo
+							return zero, luci.ErrPackageNotFound
 						}).
 						AnyTimes().
 						After(checkPackagesNotInstalled)
 
-					client.
+					theRPC.
 						EXPECT().
 						InstallPackages(gomock.Any(), "curl").
 						DoAndReturn(func(ctx context.Context, s ...string) error {
@@ -905,7 +749,7 @@ func TestAccOpkg_CheckPackageInUpdateIsFailing(t *testing.T) {
 						Times(1)
 
 					//Teardown resource
-					client.
+					theRPC.
 						EXPECT().
 						RemovePackages(gomock.Any(), "curl").
 						DoAndReturn(func(ctx context.Context, s ...string) error {
@@ -916,14 +760,14 @@ func TestAccOpkg_CheckPackageInUpdateIsFailing(t *testing.T) {
 				},
 				Config: `
 				provider "openwrt" {
-					 user = "root"
-						password = "test"
-						remote = "http://test.lan:8080"
+					user = "root"
+					password = "test"
+					remote = "http://test.lan:8080"
 				}
         resource "openwrt_opkg" "test" {
           packages = ["curl"]
         }`,
-				ExpectError: regexp.MustCompile(api.ErrPackageNotFound.Error()),
+				ExpectError: regexp.MustCompile(luci.ErrPackageNotFound.Error()),
 			},
 		},
 	})

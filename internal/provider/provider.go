@@ -1,4 +1,4 @@
-// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// Copyright https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors 2025, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package provider
@@ -7,7 +7,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/foxboron/terraform-provider-openwrt/internal/api"
+	rpc "github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
 	"github.com/foxboron/terraform-provider-openwrt/internal/resources/fs"
 	"github.com/foxboron/terraform-provider-openwrt/internal/resources/opkg"
 	"github.com/foxboron/terraform-provider-openwrt/internal/resources/service"
@@ -36,15 +36,15 @@ var (
 
 // OpenWRTProvider
 type OpenWRTProvider struct {
-	version       string
-	clientFactory api.ClientFactory
+	version    string
+	rpcFactory rpc.RPCFactory
 }
 
-func New(version string, clientFactory api.ClientFactory) func() provider.Provider {
+func New(version string, rpcFactory rpc.RPCFactory) func() provider.Provider {
 	return func() provider.Provider {
 		return &OpenWRTProvider{
-			version:       version,
-			clientFactory: clientFactory,
+			version:    version,
+			rpcFactory: rpcFactory,
 		}
 	}
 }
@@ -54,7 +54,7 @@ type OpenWRTProviderModel struct {
 	Password types.String `tfsdk:"password"`
 	Remote   types.String `tfsdk:"remote"`
 
-	ApiTimeouts *api.TimeoutsModel `tfsdk:"api_timeouts"`
+	APITimeouts *TimeoutsModel `tfsdk:"api_timeouts"`
 }
 
 func (p *OpenWRTProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -66,7 +66,7 @@ func (p *OpenWRTProvider) Schema(ctx context.Context, req provider.SchemaRequest
 	resp.Schema = schema.Schema{
 		MarkdownDescription: `This provider connets to openwrt routers through the UCI JSON RPC API.
 
-The JSON RPC API requires a couple of packages to be used. Please see [Using the JSON-RPC API](https://github.com/openwrt/luci/blob/master/docs/JsonRpcHowTo.md) from openwrt.`,
+The JSON RPC API requires a couple of packages to be used. Please see [Using the JSON-RPC API](https://htmlpreview.github.io/?https://raw.githubusercontent.com/openwrt/luci/master/docs/api/index.html) from openwrt.`,
 		Description: "Terraform, or OpenTofu, provider to manage openwrt routers",
 		Attributes: map[string]schema.Attribute{
 			"user": schema.StringAttribute{
@@ -84,7 +84,22 @@ The JSON RPC API requires a couple of packages to be used. Please see [Using the
 				Description:         `The username of the admin account. Optionally OPENWRT_REMOTE env variable can be set and used to specify the remote url. One between this attribute or the env variable must be set`,
 				Optional:            true,
 			},
-			"api_timeouts": api.TimeoutSchemaAttribute,
+			"api_timeouts": schema.SingleNestedAttribute{
+				MarkdownDescription: "Timeout configuration for the specific RPC calls. The main purpose of this optional configuration is to fine tune the default timeouts for longer API interaction (e.g. update packages, list packages, ...)",
+				Description:         "Timeout configuration for the specific RPC calls",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"auth": schema.StringAttribute{
+						MarkdownDescription: `Authentication RPC timeout value`,
+						Description:         `Authentication RPC timeout value`,
+						Optional:            true,
+					},
+					"fs":      fs.FsTimeoutSchemaAttribute,
+					"opkg":    opkg.OpkgTimeoutSchemaAttribute,
+					"service": service.ServiceTimeoutSchemaAttribute,
+					"uci":     system.UciTimeoutSchemaAttribute,
+				},
+			},
 		},
 	}
 }
@@ -92,7 +107,7 @@ The JSON RPC API requires a couple of packages to be used. Please see [Using the
 func (p *OpenWRTProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	var (
 		data OpenWRTProviderModel
-		c    api.Client
+		r    rpc.RPC
 		err  error
 	)
 
@@ -101,19 +116,14 @@ func (p *OpenWRTProvider) Configure(ctx context.Context, req provider.ConfigureR
 		return
 	}
 
-	remoteUrl := data.Remote.ValueString()
+	remoteURL := data.Remote.ValueString()
 	if openWRTRemoteEnvSet {
-		remoteUrl = openWRTRemoteEnv
+		remoteURL = openWRTRemoteEnv
 	}
 
-	apiTimeouts, err := p.clientFactory.ParseTimeouts(ctx, data.ApiTimeouts)
+	apiTimeouts, err := parseTimeouts(ctx, data.APITimeouts)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to parse timeouts", err.Error())
-		return
-	}
-	c, err = p.clientFactory.Get(ctx, remoteUrl, apiTimeouts)
-	if err != nil {
-		resp.Diagnostics.AddError("failed to instantiate remote client", err.Error())
 		return
 	}
 
@@ -122,20 +132,21 @@ func (p *OpenWRTProvider) Configure(ctx context.Context, req provider.ConfigureR
 		username = openWRTUserEnv
 		password = openWRTPasswordEnv
 	}
-	err = c.Auth(ctx, username, password)
+
+	r, err = p.rpcFactory.Get(
+		ctx,
+		remoteURL,
+		username,
+		password,
+		apiTimeouts,
+	)
 	if err != nil {
-		resp.Diagnostics.AddError("failed to auth towards openwrt API", err.Error())
+		resp.Diagnostics.AddError("failed to instantiate remote client", err.Error())
 		return
 	}
 
-	err = c.UpdatePackages(ctx)
-	if err != nil {
-		resp.Diagnostics.AddError("packages update in error", err.Error())
-		return
-	}
-
-	resp.DataSourceData = c
-	resp.ResourceData = c
+	resp.DataSourceData = r
+	resp.ResourceData = r
 }
 
 func (p *OpenWRTProvider) Resources(ctx context.Context) []func() resource.Resource {

@@ -8,8 +8,10 @@ project {
   # Supports doublestar glob patterns for more flexibility in defining which
   # files or folders should be ignored
   header_ignore = [
+    "_out/**",
     "**/types/**",
     "tools/**",
+    ".golangci.yml",
     ".goreleaser.yml",
     "docs/**",
     "examples/**",

@@ -1,4 +1,4 @@
-// Copyright (c) https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors
+// Copyright https://github.com/Foxboron/terraform-provider-openwrt/graphs/contributors 2025, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 //go:build test
@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/foxboron/terraform-provider-openwrt/internal/api"
+	"github.com/foxboron/terraform-provider-openwrt/internal/api/luci"
 	"github.com/foxboron/terraform-provider-openwrt/internal/provider"
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -26,13 +26,7 @@ var (
 	_ statecheck.StateCheck = (*StateChecker)(nil)
 )
 
-// func testAccPreCheck(t *testing.T) {
-// 	// You can add code here to run prior to any test case execution, for example assertions
-// 	// about the appropriate environment variables being set are common to see in a pre-check
-// 	// function.
-// }
-
-func TestAccFactories(clientFactory api.ClientFactory) map[string]func() (tfprotov6.ProviderServer, error) {
+func TestAccFactories(clientFactory luci.RPCFactory) map[string]func() (tfprotov6.ProviderServer, error) {
 	return map[string]func() (tfprotov6.ProviderServer, error){
 		"openwrt": providerserver.NewProtocol6WithError(provider.New("test", clientFactory)()),
 	}
